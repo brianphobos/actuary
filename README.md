@@ -53,6 +53,14 @@ Requirements: Node.js 18+ (no npm packages needed). Rust 1.80+ only for the cont
    ```
    You should see `test result: ok. 15 passed`.
 
+   Optional, end to end on a real local NEAR node (nearcore sandbox) with the compiled wasm:
+   ```bash
+   cargo install cargo-near            # once
+   cargo near build non-reproducible-wasm
+   cargo test --test sandbox -- --ignored --nocapture
+   ```
+   This deploys `target/near/actuary.wasm`, runs both story jobs with real transactions (bond, cover, heartbeats, verified PASS with the agent paid 9.8 NEAR, the refused self-short, FAIL with the buyer refunded plus a cover payout) and prints `test result: ok. 1 passed`.
+
 6. Open the dashboard: open `dashboard/dist/actuary.html` in a browser (it is a single self-contained file). The **Story** tab steps through the demo with a live price chart, ledger and on-chain records. The **Swarm market** tab runs the swarm live: workers, buyers and the underwriter swarm on one floor, with live job arcs colored by PASS odds, the vault, calibration and a tape. To rebuild it after changes: `node dashboard/build.js`.
 
 `npm test` runs steps 1, 4 and 5 together.
@@ -64,7 +72,9 @@ cargo install cargo-near          # once
 PARENT=yourname.testnet ./scripts/testnet-demo.sh
 ```
 
-The script builds the contract, creates seven sub-accounts under `PARENT`, deploys, and replays the story with real transactions: vault deposit, job, bond, cover, heartbeats, verifier resolution with the evidence hash from `verifier/verify.js`, the refused self-short, missed heartbeats, `expire` after the grace period, and redemption. It spends about 9 testnet NEAR and takes about 5 minutes (it waits for a 3-minute deadline). It prints a nearblocks link at the end.
+The script builds the contract, creates seven sub-accounts under `PARENT`, deploys, and replays the story with real transactions: vault deposit, job, bond, cover, heartbeats, verifier resolution with the evidence hash from `verifier/verify.js`, the refused self-short, missed heartbeats, `expire` after the grace period, and redemption. It spends about 6.5 testnet NEAR (the faucet gives 10) and takes about 5 minutes (it waits for a 3-minute deadline). It prints a nearblocks link at the end.
+
+The script has been run end to end with near-cli-rs 0.31.1 against a local nearcore 2.13.4 node (`NETWORK=sandbox PARENT=test.near`, with a `sandbox` connection added to `~/.config/near-cli/config.toml`). The only differences on testnet are the network and how you fund `PARENT`.
 
 ## How it works
 
@@ -129,6 +139,7 @@ Reproduce the comparison: `node sim/run.js --ticks 600 --seed <n>` for n in 1 2 
 
 ```
 contract/        NEAR smart contract (Rust, near-sdk 5), 15 unit tests
+  tests/sandbox.rs end-to-end test on a local NEAR node
   src/lib.rs     jobs, vault, escrow, market, records
   src/math.rs    FPMM, seeding, Bayes repricing (integer math)
   src/tests.rs   unit tests, shared vectors with sim/test.js

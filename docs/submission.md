@@ -18,7 +18,7 @@ Form: https://nearhackathon.com/#apply · deadline **14 Nov 2026, 23:59 UTC**. N
 ## Before you submit
 
 1. Push the repo to a new **public** GitHub repo (it must stay public through judging).
-2. Run `PARENT=yourname.testnet ./scripts/testnet-demo.sh` once and paste the nearblocks contract link into the README under "Run it on NEAR testnet". The script was written against near-cli-rs but could not be run in the build sandbox (no NEAR RPC access there), so it is untested; fix anything it trips on.
+2. Run `PARENT=yourname.testnet ./scripts/testnet-demo.sh` once and paste the nearblocks contract link into the README under "Run it on NEAR testnet". The script already passes end to end against a local NEAR node with the real CLI; it just has not touched public testnet yet, because the build sandbox could not reach testnet RPC. Needs `cargo install cargo-near near-cli-rs` and Node 18+.
 3. Record the video (see `video-script.md`) and post on X (see `x-post.md`).
 4. Fill in the form. Do not resubmit to change things later; use https://nearhackathon.com/request-changes.
 

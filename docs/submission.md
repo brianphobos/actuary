@@ -17,7 +17,11 @@ Form: https://nearhackathon.com/#apply · deadline **14 Nov 2026, 23:59 UTC**. N
 
 ## Before you submit
 
-1. Push the repo to a new **public** GitHub repo (it must stay public through judging).
+1. Push the repo to a new **public** GitHub repo (it must stay public through judging). The tarball already holds the git history:
+   ```bash
+   tar -xzf actuary-repo.tar.gz && cd actuary
+   gh repo create actuary --public --source . --push     # or create it on github.com and `git push`
+   ```
 2. Run `PARENT=yourname.testnet ./scripts/testnet-demo.sh` once and paste the nearblocks contract link into the README under "Run it on NEAR testnet". The script already passes end to end against a local NEAR node with the real CLI; it just has not touched public testnet yet, because the build sandbox could not reach testnet RPC. Needs `cargo install cargo-near near-cli-rs` and Node 18+.
 3. Record the video (see `video-script.md`) and post on X (see `x-post.md`).
 4. Fill in the form. Do not resubmit to change things later; use https://nearhackathon.com/request-changes.

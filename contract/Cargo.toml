@@ -1,0 +1,24 @@
+[package]
+name = "actuary"
+version = "0.1.0"
+edition = "2021"
+description = "Actuary: a market that insures AI agent work on NEAR"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "5.5.0"
+uint = { version = "0.9.5", default-features = false }
+
+[dev-dependencies]
+near-sdk = { version = "5.5.0", features = ["unit-testing"] }
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

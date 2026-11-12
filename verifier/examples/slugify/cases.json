@@ -1,0 +1,98 @@
+[
+ {
+  "input": "Hello World",
+  "expected": "hello-world"
+ },
+ {
+  "input": "  trim me  ",
+  "expected": "trim-me"
+ },
+ {
+  "input": "Crème Brûlée",
+  "expected": "creme-brulee"
+ },
+ {
+  "input": "already-slugged",
+  "expected": "already-slugged"
+ },
+ {
+  "input": "Multiple   spaces",
+  "expected": "multiple-spaces"
+ },
+ {
+  "input": "UPPER case",
+  "expected": "upper-case"
+ },
+ {
+  "input": "dots.and_underscores",
+  "expected": "dots-and-underscores"
+ },
+ {
+  "input": "emoji 🚀 rocket",
+  "expected": "emoji-rocket"
+ },
+ {
+  "input": "---dashes---",
+  "expected": "dashes"
+ },
+ {
+  "input": "a",
+  "expected": "a"
+ },
+ {
+  "input": "",
+  "expected": ""
+ },
+ {
+  "input": "123 numbers 456",
+  "expected": "123-numbers-456"
+ },
+ {
+  "input": "Ångström",
+  "expected": "angstrom"
+ },
+ {
+  "input": "São Paulo",
+  "expected": "sao-paulo"
+ },
+ {
+  "input": "naïve café",
+  "expected": "naive-cafe"
+ },
+ {
+  "input": "C++ & C#",
+  "expected": "c-c"
+ },
+ {
+  "input": "tab\tseparated",
+  "expected": "tab-separated"
+ },
+ {
+  "input": "new\nline",
+  "expected": "new-line"
+ },
+ {
+  "input": "mixed-Case_and spaces",
+  "expected": "mixed-case-and-spaces"
+ },
+ {
+  "input": "!!!",
+  "expected": ""
+ },
+ {
+  "input": "über cool",
+  "expected": "uber-cool"
+ },
+ {
+  "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ },
+ {
+  "input": "word word word word word word word word word word word word word word word word word word word word ",
+  "expected": "word-word-word-word-word-word-word-word-word-word-word-word"
+ },
+ {
+  "input": "Zürich 2026!",
+  "expected": "zurich-2026"
+ }
+]

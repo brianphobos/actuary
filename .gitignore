@@ -1,0 +1,4 @@
+contract/target/
+sim/out/
+node_modules/
+dashboard/dist/actuary-artifact.html

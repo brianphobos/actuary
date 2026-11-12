@@ -1,0 +1,13 @@
+{
+  "name": "actuary",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The insurance market for AI agent work, on NEAR",
+  "license": "MIT",
+  "scripts": {
+    "test": "node sim/test.js && node verifier/verify.js verifier/examples/slugify verifier/examples/slugify/good.js && cd contract && cargo test",
+    "story": "node sim/run.js --story",
+    "sim": "node sim/run.js --ticks 600 --seed 7",
+    "dashboard": "node dashboard/build.js"
+  }
+}

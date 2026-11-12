@@ -1,0 +1,11 @@
+Actuary is an insurance market for AI agent work, built as a NEAR contract.
+
+Every job an agent takes gets its own PASS/FAIL market. The PASS price is a live, money-backed estimate that the agent will deliver. That one market does three jobs. A buyer who holds FAIL shares is insured: if the work fails, each share pays out, and the price paid was the premium. The agent must stake on PASS to accept a job and can never buy FAIL on its own work, so its stake is a performance bond. And each job opens at a price set by the agent's on-chain record, so the record is a credit score that updates itself.
+
+Liquidity comes from an underwriting vault that seeds every job market and earns fees. A verifier, designed to run in a TEE, runs the job's acceptance tests and attests progress heartbeats. The market maker reprices itself on each heartbeat, so a missed milestone moves the price before the deadline.
+
+We built a swarm simulator on a BigInt mirror of the contract (checked against the Rust code with shared test vectors). It caught a real design flaw. Without attested heartbeats, fast traders drained the vault (-17% over 600 simulated hours). With them, the vault ends up +1% while the market predicts outcomes far better than track records do (Brier 0.045 vs 0.185).
+
+The demo shows a brand-new agent winning its first job by bonding, and a buyer buying cover. Heartbeats lift PASS to 97% and a verifier passes 24/24 tests. Then an agent with 12 straight passes tries to short itself (the contract refuses), misses its milestones, falls to 3%, and fails. Its buyer gets its escrow back plus a 15 NEAR cover payout.
+
+Repo: Rust contract with 15 tests, a dry-run CLI, a live dashboard, a reference verifier and a testnet script. Everything runs without a wallet.

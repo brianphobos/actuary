@@ -1,0 +1,464 @@
+<!doctype html><!--local-only-->
+<html lang="en"><!--local-only-->
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><!--local-only-->
+<title>Actuary</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: an underwriting room. A story rail on the left, the live market on the right; swarm mode swaps in the floor canvas. Single dark theme on purpose: it is a trading screen. */
+:root {
+  --ink: #0c1315;
+  --panel: #121c1f;
+  --raised: #182529;
+  --line: #24363b;
+  --fg: #e6eee9;
+  --muted: #8da29d;
+  --pass: #3fd0a8;
+  --fail: #ff6b57;
+  --brass: #d9a441;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--ink); color: var(--fg); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+.brand { display: grid; gap: 4px; min-width: 0; }
+.brand h1 { font-family: var(--display); font-weight: 700; font-size: clamp(34px, 5vw, 52px); letter-spacing: -0.02em; line-height: 1; margin: 0; }
+.brand h1 span { color: var(--brass); }
+.brand p { margin: 0; color: var(--muted); max-width: 60ch; text-wrap: balance; }
+.tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.tabs button { font: 600 14px var(--body); color: var(--muted); background: transparent; border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--ink); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.eyebrow { font: 500 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+.grid-story { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid-story { grid-template-columns: 1fr; } }
+.step { display: grid; gap: 14px; }
+.step .num { font: 500 12px var(--mono); color: var(--brass); }
+.step h2 { font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.15; margin: 0; text-wrap: balance; }
+.step p { margin: 0; font-size: 16px; color: var(--fg); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { font: 600 14px var(--body); border-radius: 10px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--raised); color: var(--fg); }
+.btn.primary { background: var(--brass); color: var(--ink); border-color: var(--brass); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.dots { display: flex; gap: 5px; flex-wrap: wrap; }
+.dots i { width: 18px; height: 4px; border-radius: 2px; background: var(--line); }
+.dots i.on { background: var(--brass); }
+.rail { display: grid; gap: 14px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.pos { color: var(--pass); } .neg { color: var(--fail); }
+.chartbox { position: relative; width: 100%; aspect-ratio: 16 / 7; max-width: 100%; }
+.chartbox canvas, .floor canvas { width: 100%; height: 100%; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+.legend b { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.jobcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.jobcard { background: var(--raised); border-radius: 12px; padding: 14px; display: grid; gap: 8px; border: 1px solid var(--line); }
+.jobcard .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.jobcard .who { font-weight: 600; }
+.big { font: 500 30px var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.pill { font: 500 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; border-radius: 999px; padding: 3px 9px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.pass { color: var(--pass); } .pill.fail { color: var(--fail); } .pill.open { color: var(--brass); } .pill.wait { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+td.n, th.n { text-align: right; font-family: var(--mono); }
+.tablewrap { overflow-x: auto; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); position: relative; overflow: hidden; min-width: 60px; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--pass); border-radius: 3px; }
+.refused { font-family: var(--mono); font-size: 13px; color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, var(--panel)); border: 1px solid color-mix(in srgb, var(--fail) 40%, var(--panel)); border-radius: 10px; padding: 10px 12px; }
+/* swarm */
+.grid-swarm { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 20px; align-items: start; }
+@media (max-width: 980px) { .grid-swarm { grid-template-columns: 1fr; } }
+.floor { position: relative; width: 100%; aspect-ratio: 1 / 1; max-width: 100%; max-height: 720px; margin: 0 auto; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--raised); border-radius: 12px; padding: 12px; display: grid; gap: 2px; border: 1px solid var(--line); }
+.tile .v { font: 500 22px var(--mono); font-variant-numeric: tabular-nums; }
+.tile .s { font-size: 12px; color: var(--muted); }
+.tape { font: 12.5px var(--mono); display: grid; gap: 3px; max-height: 220px; overflow: hidden; }
+.tape div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.tape div b { font-weight: 500; color: var(--fg); }
+.swarmctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.swarmctl label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.swarmctl input[type=number] { width: 70px; background: var(--raised); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: 13px var(--mono); }
+.swarmctl input[type=range] { accent-color: var(--brass); }
+.badge { font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; margin-left: 6px; }
+.badge.rookie { color: var(--brass); border-color: var(--brass); }
+.badge.sleeper, .badge.fraud { color: var(--fail); border-color: var(--fail); }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
+footer { color: var(--muted); font-size: 13px; }
+footer code { font-family: var(--mono); color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+</head><!--local-only-->
+<body><!--local-only-->
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="eyebrow">NEAR · underwriting for AI agent work</div>
+      <h1>Actuary<span>.</span></h1>
+      <p>Every job an AI agent takes gets its own market. The price is the odds it delivers. Buying FAIL is insurance, the agent's stake is its bond, and the record it leaves is its credit score.</p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button id="tab-story" role="tab" aria-selected="true">Story</button>
+      <button id="tab-swarm" role="tab" aria-selected="false">Swarm market</button>
+    </div>
+  </header>
+
+  <section id="view-story" class="grid-story">
+    <div class="rail">
+      <div class="panel step">
+        <div class="dots" id="dots"></div>
+        <div class="num" id="stepnum">Step 1 of 13</div>
+        <h2 id="steptitle">Underwriters fund the vault</h2>
+        <p id="steptext"></p>
+        <div id="refused" class="refused" hidden></div>
+        <div class="controls">
+          <button class="btn" id="prev">Back</button>
+          <button class="btn primary" id="next">Next step</button>
+          <button class="btn" id="auto">Play all</button>
+          <button class="btn" id="restart">Restart</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="eyebrow" style="margin-bottom:10px">Ledger (net NEAR in / out)</div>
+        <dl class="kv" id="ledger"></dl>
+      </div>
+    </div>
+    <div class="rail">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <div class="eyebrow">PASS price = market odds the agent delivers</div>
+          <div class="legend"><span><b style="background:var(--pass)"></b>nova.agent · rookie</span><span><b style="background:var(--fail)"></b>sleeper.agent · 12 straight passes</span></div>
+        </div>
+        <div class="chartbox"><canvas id="chart"></canvas></div>
+      </div>
+      <div class="jobcards" id="jobcards"></div>
+      <div class="panel">
+        <div class="eyebrow" style="margin-bottom:6px">Agent records on-chain</div>
+        <div class="tablewrap"><table id="agents"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-swarm" hidden>
+    <div class="grid-swarm">
+      <div class="panel" style="display:grid;gap:12px">
+        <div class="swarmctl">
+          <button class="btn primary" id="sw-play">Pause</button>
+          <label for="sw-speed">Speed <input id="sw-speed" type="range" min="1" max="12" value="4"></label>
+          <label for="sw-seed">Seed <input id="sw-seed" type="number" value="7" min="1" max="9999"></label>
+          <button class="btn" id="sw-reset">Restart</button>
+          <span class="eyebrow" id="sw-clock">hour 0</span>
+        </div>
+        <div class="floor"><canvas id="floor"></canvas></div>
+        <div class="legend">
+          <span><b style="background:var(--brass)"></b>vault (size = capital)</span>
+          <span><b style="background:var(--fg)"></b>worker agents</span>
+          <span><b style="background:var(--muted)"></b>buyers (outer) and underwriter swarm (orbit)</span>
+          <span><b style="background:var(--pass)"></b>PASS likely</span><span><b style="background:var(--fail)"></b>FAIL likely</span>
+        </div>
+      </div>
+      <div class="rail">
+        <div class="tiles">
+          <div class="tile"><span class="eyebrow">Jobs resolved</span><span class="v" id="t-jobs">0</span><span class="s" id="t-pass">pass rate</span></div>
+          <div class="tile"><span class="eyebrow">Market accuracy</span><span class="v" id="t-brier">–</span><span class="s" id="t-brier2">Brier score at close</span></div>
+          <div class="tile"><span class="eyebrow">Cover paid out</span><span class="v" id="t-cover">0</span><span class="s" id="t-prem">NEAR to buyers</span></div>
+          <div class="tile"><span class="eyebrow">Vault</span><span class="v" id="t-vault">3000</span><span class="s" id="t-vret">NEAR</span></div>
+        </div>
+        <div class="panel">
+          <div class="eyebrow" style="margin-bottom:6px">Vault capital, NEAR</div>
+          <div class="chartbox" style="aspect-ratio: 16/6"><canvas id="vaultchart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="eyebrow" style="margin-bottom:8px">Tape</div>
+          <div class="tape" id="tape"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row2" style="margin-top:20px">
+      <div class="panel">
+        <div class="eyebrow" style="margin-bottom:6px">Agents: record, and the odds their next job opens at</div>
+        <div class="tablewrap"><table id="sw-agents"></table></div>
+      </div>
+      <div class="panel">
+        <div class="eyebrow" style="margin-bottom:6px">Calibration: closing price vs what happened</div>
+        <div class="chartbox" style="aspect-ratio: 4/3"><canvas id="calib"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Everything on this page runs in your browser on <code>engine.js</code>, a BigInt mirror of the NEAR contract that is tested against the Rust code number for number. No wallet, no network, no funds. Scripted agents, seeded randomness: the same seed gives the same market.</footer>
+</div>
+
+<script src="../sim/engine.js"></script>
+<script src="../sim/swarm.js"></script>
+<script>
+(function () {
+  'use strict';
+  const E = window.ActuaryEngine, S = window.ActuarySwarm;
+  const css = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+  const C = { pass: css('--pass'), fail: css('--fail'), brass: css('--brass'), fg: css('--fg'), muted: css('--muted'), line: css('--line'), raised: css('--raised'), ink: css('--ink'), panel: css('--panel') };
+  const MONO = '12px "IBM Plex Mono", ui-monospace, monospace';
+  const f = S.f, hours = (t) => Number(t / E.HOUR) + Number(t % E.HOUR) / Number(E.HOUR);
+  const $ = (id) => document.getElementById(id);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function fitCanvas(cv) {
+    const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    const g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); return { g, w: r.width, h: r.height };
+  }
+  function mix(a, b, t) { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; }
+  function probColor(p) { return p < 0.5 ? mix(C.fail, C.brass, p * 2) : mix(C.brass, C.pass, (p - 0.5) * 2); }
+
+  // ---------------- Story ----------------
+  let story, idx;
+  function resetStory() { story = S.createStory(); idx = 0; story.steps[0].text = story.steps[0].run(); renderStory(); }
+  function goTo(target) {
+    if (target < idx) { story = S.createStory(); idx = -1; }
+    while (idx < target) { idx++; story.steps[idx].text = story.steps[idx].run(); }
+    renderStory();
+  }
+  const KIND = { open: 'opened', bond: 'bond', cover: 'cover', actuary: 'underwriter', watcher: 'watcher', hb_ok: 'heartbeat', hb_miss: 'missed', resolve: 'resolved' };
+  function renderStory() {
+    const st = story.steps[idx], m = story.m, ctx = story.ctx;
+    $('stepnum').textContent = `Step ${idx + 1} of ${story.steps.length}`;
+    $('steptitle').textContent = st.title;
+    const refusal = st.text.match(/refuses: "([^"]+)"/);
+    $('steptext').textContent = refusal ? st.text.split(' The contract refuses')[0] : st.text;
+    $('refused').hidden = !refusal;
+    if (refusal) $('refused').textContent = `buy(job ${ctx.sleeper}, Fail) by sleeper.agent → Smart contract panicked: ${refusal[1]}`;
+    $('dots').innerHTML = story.steps.map((_, i) => `<i class="${i <= idx ? 'on' : ''}"></i>`).join('');
+    $('prev').disabled = idx === 0; $('next').disabled = idx === story.steps.length - 1;
+    // ledger
+    const W = (a) => f(m.wallets.get(a) || 0n);
+    // sleeper.agent: only this story's job, not its 12 past jobs
+    const rows = [['acme.buyer', W('acme.buyer')], ['nova.agent', W('nova.agent')], ['globex.buyer', W('globex.buyer')], ['sleeper.agent', ctx.sleeper == null ? 0 : sleeperStoryFlow(m, ctx.sleeper)], ['Underwriting vault', f(m.getVault().totalAssets)]];
+    $('ledger').innerHTML = rows.map(([k, v], i) => `<dt>${k}</dt><dd class="${i === 4 ? '' : v > 0.0001 ? 'pos' : v < -0.0001 ? 'neg' : ''}">${i === 4 ? v.toFixed(2) : (v > 0 ? '+' : '') + v.toFixed(2)}</dd>`).join('')
+      + `<dt>Escrow held</dt><dd>${f(m.jobs.filter((j) => j.status === 'Active' || j.status === 'Posted').reduce((s, j) => s + j.payment, 0n)).toFixed(2)}</dd>`;
+    // job cards
+    const cards = [];
+    for (const [id, name, buyer] of [[ctx.nova, 'nova.agent', 'acme.buyer'], [ctx.sleeper, 'sleeper.agent', 'globex.buyer']]) {
+      if (id == null) continue;
+      const j = m.job(id), p = m.passPriceBps(id) / 10000;
+      const st = j.status === 'Passed' ? '<span class="pill pass">Passed</span>' : j.status === 'Failed' ? '<span class="pill fail">Failed</span>' : j.status === 'Active' ? '<span class="pill open">Market open</span>' : '<span class="pill wait">Waiting for bond</span>';
+      const cover = f(m.getPosition(id, buyer).fail) || f(name === 'nova.agent' ? ctx.novaCover : ctx.globexCover);
+      cards.push(`<div class="jobcard"><div class="top"><span class="who">Job #${id} · ${name}</span>${st}</div>
+        <div class="big" style="color:${probColor(p)}">${(p * 100).toFixed(1)}%</div>
+        <dl class="kv"><dt>Payment in escrow</dt><dd>${f(j.payment).toFixed(2)}</dd><dt>Agent bond</dt><dd>${f(j.bond).toFixed(2)}</dd><dt>${buyer} cover</dt><dd>${cover.toFixed(2)}</dd><dt>Opening odds from record</dt><dd>${(j.priorBps / 100).toFixed(1)}%</dd></dl></div>`);
+    }
+    $('jobcards').innerHTML = cards.join('');
+    // agents
+    const ag = ['nova.agent', 'sleeper.agent'].map((a) => { const r = m.getAgent(a); return `<tr><td>${a}</td><td class="n">${r.passes} / ${r.fails}</td><td class="n">${(m.agentPriorBps(a) / 100).toFixed(1)}%</td><td class="n">${f(r.earned).toFixed(2)}</td><td class="n">${f(r.slashed).toFixed(2)}</td></tr>`; });
+    $('agents').innerHTML = `<tr><th>Agent</th><th class="n">Pass / fail</th><th class="n">Next opens at</th><th class="n">Earned</th><th class="n">Bond lost</th></tr>${ag.join('')}`;
+    drawStoryChart();
+  }
+  function sleeperStoryFlow(m, id) {
+    // net flow of sleeper.agent on the story job only
+    let v = 0n;
+    for (const e of m.events) if (e.job === id && e.who === 'sleeper.agent' && e.type === 'trade') v -= e.amount;
+    const j = m.job(id); if (j.status === 'Passed') v += j.payment;
+    return f(v);
+  }
+  function drawStoryChart() {
+    const { g, w, h } = fitCanvas($('chart'));
+    const m = story.m, ctx = story.ctx;
+    g.clearRect(0, 0, w, h);
+    const L = 40, R = 14, T = 14, B = 26, t0 = 20, t1 = 80;
+    const X = (t) => L + ((t - t0) / (t1 - t0)) * (w - L - R), Y = (p) => T + (1 - p) * (h - T - B);
+    g.font = MONO; g.fillStyle = C.muted; g.strokeStyle = C.line; g.lineWidth = 1;
+    for (const p of [0, 0.25, 0.5, 0.75, 1]) { g.beginPath(); g.moveTo(L, Y(p)); g.lineTo(w - R, Y(p)); g.stroke(); g.textAlign = 'right'; g.fillText(`${p * 100}%`, L - 6, Y(p) + 4); }
+    g.textAlign = 'center';
+    for (let t = 20; t <= 80; t += 10) g.fillText(`h${t}`, X(t), h - 8);
+    for (const [id, col] of [[ctx.nova, C.pass], [ctx.sleeper, C.fail]]) {
+      if (id == null) continue;
+      const j = m.job(id); const pts = j.history.map((x) => [hours(x.t), x.p / 10000, x.kind]);
+      if (!pts.length) { continue; }
+      // area
+      g.beginPath(); g.moveTo(X(pts[0][0]), Y(0));
+      let last = null;
+      for (const [t, p] of pts) { if (last) g.lineTo(X(t), Y(last[1])); g.lineTo(X(t), Y(p)); last = [t, p]; }
+      const end = j.status === 'Active' ? Math.min(t1, hours(m.now) + 1) : last[0];
+      g.lineTo(X(end), Y(last[1])); g.lineTo(X(end), Y(0)); g.closePath();
+      g.fillStyle = col + '22'; g.fill();
+      g.beginPath(); last = null;
+      for (const [t, p] of pts) { if (!last) g.moveTo(X(t), Y(p)); else { g.lineTo(X(t), Y(last[1])); g.lineTo(X(t), Y(p)); } last = [t, p]; }
+      g.lineTo(X(end), Y(last[1])); g.strokeStyle = col; g.lineWidth = 2.2; g.stroke();
+      // markers
+      for (const [t, p, k] of pts) {
+        if (!['bond', 'cover', 'hb_ok', 'hb_miss', 'resolve'].includes(k)) continue;
+        g.beginPath(); g.arc(X(t), Y(p), k === 'resolve' ? 5 : 3.5, 0, Math.PI * 2);
+        g.fillStyle = k === 'hb_miss' ? C.fail : k === 'cover' ? C.brass : k === 'hb_ok' ? C.pass : C.fg; g.fill();
+      }
+      g.beginPath(); g.arc(X(end), Y(last[1]), 4, 0, Math.PI * 2); g.fillStyle = col; g.fill();
+      g.textAlign = 'left'; g.fillStyle = C.fg; g.fillText(`${(last[1] * 100).toFixed(1)}%`, Math.min(X(end) + 8, w - 52), last[1] > 0.9 ? Y(last[1]) + 18 : Y(last[1]) - 8);
+    }
+  }
+  $('next').onclick = () => goTo(Math.min(idx + 1, story.steps.length - 1));
+  $('prev').onclick = () => goTo(Math.max(idx - 1, 0));
+  $('restart').onclick = () => { stopAuto(); resetStory(); };
+  let autoTimer = null;
+  function stopAuto() { clearInterval(autoTimer); autoTimer = null; $('auto').textContent = 'Play all'; }
+  $('auto').onclick = () => {
+    if (autoTimer) return stopAuto();
+    if (idx === story.steps.length - 1) resetStory();
+    $('auto').textContent = 'Stop';
+    autoTimer = setInterval(() => { if (idx >= story.steps.length - 1) return stopAuto(); goTo(idx + 1); }, 4200);
+  };
+
+  // ---------------- Swarm ----------------
+  let sw, evIdx, particles, pulses, playing = true, acc = 0, tapeRows = [];
+  function resetSwarm() {
+    sw = S.createSwarm({ seed: Number($('sw-seed').value) || 7 }); evIdx = 0; particles = []; pulses = []; tapeRows = [];
+    for (let i = 0; i < 6; i++) sw.step();
+  }
+  function layout(w, h) {
+    const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2;
+    const pos = {};
+    S.WORKERS.forEach((a, i) => { const t = -Math.PI / 2 + (i / S.WORKERS.length) * Math.PI * 2; pos[a.id] = [cx + Math.cos(t) * R * 0.42, cy + Math.sin(t) * R * 0.42]; });
+    S.BUYERS.forEach((b, i) => { const t = -Math.PI / 2 + ((i + 0.5) / S.BUYERS.length) * Math.PI * 2; pos[b] = [cx + Math.cos(t) * R * 0.86, cy + Math.sin(t) * R * 0.86]; });
+    const now = performance.now() / 9000;
+    S.TRADERS.forEach((t, i) => { const a = now + (i / S.TRADERS.length) * Math.PI * 2; pos[t.id] = [cx + Math.cos(a) * R * 0.66, cy + Math.sin(a) * R * 0.66]; });
+    pos.vault = [cx, cy]; pos[S.VERIFIER] = [cx, cy];
+    return { pos, cx, cy, R };
+  }
+  function ingest(w, h) {
+    const m = sw.market, { pos } = layout(w, h);
+    for (; evIdx < m.events.length; evIdx++) {
+      const e = m.events[evIdx];
+      if (e.type === 'trade' && e.job != null) {
+        const j = m.jobs[e.job]; const from = pos[e.who] || pos.vault; const to = mid(pos[j.buyer], pos[j.agent]);
+        if (particles.length < 400) particles.push({ x: from[0], y: from[1], tx: to[0], ty: to[1], c: e.outcome === 'Pass' ? C.pass : C.fail, life: 1 });
+        if (e.tag === 'cover') tape(`<b>${j.buyer}</b> buys ${f(e.shares).toFixed(1)} cover on #${e.job} for ${f(e.amount).toFixed(2)}`);
+      } else if (e.type === 'heartbeat') {
+        const j = m.jobs[e.job]; pulses.push({ at: j.agent, c: e.onTime ? C.pass : C.fail, life: 1 });
+        if (!e.onTime) tape(`<b>#${e.job}</b> ${j.agent} missed a milestone: ${(e.before / 100).toFixed(0)}% → ${(e.after / 100).toFixed(0)}%`);
+      } else if (e.type === 'job_resolved') {
+        const j = m.jobs[e.job]; pulses.push({ at: j.agent, c: e.outcome === 'Pass' ? C.pass : C.fail, life: 1.6, big: true });
+        tape(`<b>#${e.job}</b> ${j.agent} <span style="color:${e.outcome === 'Pass' ? C.pass : C.fail}">${e.outcome.toUpperCase()}</span> · closed at ${(e.closingBps / 100).toFixed(0)}%`);
+      } else if (e.type === 'job_accepted') {
+        const j = m.jobs[e.job]; tape(`<b>${j.buyer}</b> hires ${j.agent} for ${f(j.payment).toFixed(1)} · opens ${(j.priorBps / 100).toFixed(0)}%`);
+      }
+    }
+  }
+  function tape(html) { tapeRows.unshift(html); tapeRows.length = Math.min(tapeRows.length, 11); }
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  function drawFloor() {
+    const { g, w, h } = fitCanvas($('floor'));
+    const m = sw.market; ingest(w, h);
+    const { pos, cx, cy, R } = layout(w, h);
+    g.clearRect(0, 0, w, h);
+    // rings
+    g.strokeStyle = C.line; g.lineWidth = 1;
+    for (const r of [0.42, 0.66, 0.86]) { g.beginPath(); g.arc(cx, cy, R * r, 0, Math.PI * 2); g.stroke(); }
+    // live jobs
+    for (const j of m.jobs) {
+      if (j.status !== 'Active') continue;
+      const p = m.passPriceBps(j.id) / 10000, a = pos[j.buyer], b = pos[j.agent];
+      g.beginPath(); g.moveTo(a[0], a[1]); g.quadraticCurveTo(cx + (a[0] + b[0] - 2 * cx) * 0.2, cy + (a[1] + b[1] - 2 * cy) * 0.2, b[0], b[1]);
+      g.strokeStyle = probColor(p); g.globalAlpha = 0.75; g.lineWidth = 1 + f(j.payment) / 5; g.stroke(); g.globalAlpha = 1;
+    }
+    // vault
+    const v = f(m.getVault().totalAssets), vr = Math.max(12, R * 0.11 * Math.sqrt(v / 3000));
+    const grad = g.createRadialGradient(cx, cy, 0, cx, cy, vr * 1.8); grad.addColorStop(0, C.brass + 'aa'); grad.addColorStop(1, C.brass + '00');
+    g.fillStyle = grad; g.beginPath(); g.arc(cx, cy, vr * 1.8, 0, Math.PI * 2); g.fill();
+    g.fillStyle = C.brass; g.beginPath(); g.arc(cx, cy, vr, 0, Math.PI * 2); g.fill();
+    g.fillStyle = C.ink; g.font = '600 12px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.fillText(v.toFixed(0), cx, cy + 4);
+    // particles
+    for (const p of particles) { p.x += (p.tx - p.x) * 0.08; p.y += (p.ty - p.y) * 0.08; p.life -= 0.025; g.globalAlpha = Math.max(0, p.life); g.fillStyle = p.c; g.beginPath(); g.arc(p.x, p.y, 2.2, 0, Math.PI * 2); g.fill(); }
+    g.globalAlpha = 1; particles = particles.filter((p) => p.life > 0);
+    // pulses
+    for (const q of pulses) { const at = pos[q.at]; const r = (q.big ? 34 : 22) * (1.6 - q.life); g.strokeStyle = q.c; g.globalAlpha = Math.max(0, q.life / 1.6); g.lineWidth = q.big ? 3 : 2; g.beginPath(); g.arc(at[0], at[1], r, 0, Math.PI * 2); g.stroke(); q.life -= 0.03; }
+    g.globalAlpha = 1; pulses = pulses.filter((q) => q.life > 0);
+    // nodes
+    g.font = MONO;
+    for (const a of S.WORKERS) {
+      const [x, y] = pos[a.id]; const joined = a.joins <= sw.tick; const p = m.agentPriorBps(a.id) / 10000;
+      g.globalAlpha = joined ? 1 : 0.25;
+      g.fillStyle = C.panel; g.strokeStyle = probColor(p); g.lineWidth = 3; g.beginPath(); g.arc(x, y, 15, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillStyle = C.fg; g.textAlign = 'center'; g.fillText(a.id.replace('.agent', ''), x, y + 32); g.fillStyle = C.muted; g.fillText(joined ? `${(p * 100).toFixed(0)}%` : `joins h${a.joins}`, x, y + 46);
+      g.globalAlpha = 1;
+    }
+    for (const b of S.BUYERS) { const [x, y] = pos[b]; g.fillStyle = C.muted; g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill(); g.fillText(b.replace('.buyer', ''), x, y + 20); }
+    for (const t of S.TRADERS) { const [x, y] = pos[t.id]; g.fillStyle = t.kind === 'watcher' ? C.pass : t.kind === 'actuary' ? C.brass : C.muted; g.globalAlpha = 0.85; g.beginPath(); g.arc(x, y, 3.5, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1; }
+  }
+  function renderSwarmPanels() {
+    const r = sw.report();
+    $('sw-clock').textContent = `hour ${sw.tick}`;
+    $('t-jobs').textContent = r.jobsResolved; $('t-pass').textContent = `${(r.passRate * 100).toFixed(0)}% passed`;
+    $('t-brier').textContent = r.jobsResolved ? r.brierMarketClose.toFixed(3) : '–';
+    $('t-brier2').textContent = r.jobsResolved ? `vs ${r.brierOpeningPrior.toFixed(3)} from record alone (lower is better)` : 'Brier score at close';
+    $('t-cover').textContent = r.buyers.coverPaid.toFixed(0); $('t-prem').textContent = `NEAR paid to buyers · ${r.buyers.premiums.toFixed(0)} in premiums`;
+    $('t-vault').textContent = r.vault.assets.toFixed(0);
+    $('t-vret').innerHTML = `NEAR · <span class="${r.vault.returnPct >= 0 ? 'pos' : 'neg'}">${r.vault.returnPct >= 0 ? '+' : ''}${r.vault.returnPct.toFixed(2)}%</span> · fees ${r.vault.fees.toFixed(0)}`;
+    $('tape').innerHTML = tapeRows.map((x) => `<div>${x}</div>`).join('');
+    $('sw-agents').innerHTML = `<tr><th>Agent</th><th class="n">Pass / fail</th><th>Next opens at</th><th class="n">Earned</th><th class="n">Bond lost</th></tr>` + r.agents.map((a) => {
+      const joined = a.joins <= sw.tick;
+      return `<tr style="opacity:${joined ? 1 : 0.45}"><td>${a.id}<span class="badge ${a.kind}">${a.kind}</span></td><td class="n">${a.passes} / ${a.fails}</td><td><div style="display:flex;gap:8px;align-items:center"><div class="bar" style="flex:1"><i style="width:${a.prior * 100}%;background:${probColor(a.prior)}"></i></div><span style="font-family:var(--mono);font-size:12px">${(a.prior * 100).toFixed(0)}%</span></div></td><td class="n">${a.earned.toFixed(1)}</td><td class="n">${a.slashed.toFixed(1)}</td></tr>`;
+    }).join('');
+    drawVault(); drawCalib(r);
+  }
+  function drawVault() {
+    const { g, w, h } = fitCanvas($('vaultchart'));
+    const pts = sw.stats.vaultCurve; g.clearRect(0, 0, w, h); if (pts.length < 2) return;
+    const vals = pts.map((p) => p.assets), lo = Math.min(...vals, 3000) - 5, hi = Math.max(...vals, 3000) + 5;
+    const L = 44, R = 8, T = 8, B = 18;
+    const X = (i) => L + (i / (pts.length - 1)) * (w - L - R), Y = (v) => T + (1 - (v - lo) / (hi - lo)) * (h - T - B);
+    g.font = MONO; g.fillStyle = C.muted; g.textAlign = 'right'; g.strokeStyle = C.line;
+    for (const v of [lo + 5, 3000, hi - 5]) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(w - R, Y(v)); g.stroke(); g.fillText(v.toFixed(0), L - 6, Y(v) + 4); }
+    g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(X(i), Y(p.assets)) : g.moveTo(X(i), Y(p.assets)))); g.lineTo(X(pts.length - 1), h - B); g.lineTo(L, h - B); g.closePath(); g.fillStyle = C.brass + '22'; g.fill();
+    g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(X(i), Y(p.assets)) : g.moveTo(X(i), Y(p.assets)))); g.strokeStyle = C.brass; g.lineWidth = 2; g.stroke();
+    const last = pts[pts.length - 1]; g.fillStyle = C.brass; g.beginPath(); g.arc(X(pts.length - 1), Y(last.assets), 3.5, 0, Math.PI * 2); g.fill();
+  }
+  function drawCalib(r) {
+    const { g, w, h } = fitCanvas($('calib'));
+    g.clearRect(0, 0, w, h);
+    const L = 44, R = 12, T = 10, B = 34; const X = (p) => L + p * (w - L - R), Y = (p) => T + (1 - p) * (h - T - B);
+    g.font = MONO; g.fillStyle = C.muted; g.strokeStyle = C.line;
+    for (const p of [0, 0.5, 1]) { g.beginPath(); g.moveTo(L, Y(p)); g.lineTo(w - R, Y(p)); g.stroke(); g.textAlign = 'right'; g.fillText(`${p * 100}%`, L - 6, Y(p) + 4); g.textAlign = 'center'; g.fillText(`${p * 100}%`, X(p), h - 18); }
+    g.fillText('market price at close', (L + w - R) / 2, h - 4);
+    g.setLineDash([4, 4]); g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(1), Y(1)); g.stroke(); g.setLineDash([]);
+    for (const b of r.calibration) { if (!b.n) continue; const rad = 3 + Math.sqrt(b.n) * 0.9; g.fillStyle = probColor(b.actual); g.globalAlpha = 0.85; g.beginPath(); g.arc(X(b.predicted), Y(b.actual), rad, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1; g.fillStyle = C.fg; g.textAlign = 'left'; g.fillText(`n=${b.n}`, X(b.predicted) + rad + 4, Y(b.actual) + 4); }
+  }
+  let lastPanels = 0;
+  function loop(ts) {
+    if (!$('view-swarm').hidden) {
+      if (playing && sw.tick < 2000) { acc += Number($('sw-speed').value) / 12; while (acc >= 1) { sw.step(); acc -= 1; } }
+      drawFloor();
+      if (ts - lastPanels > 250) { renderSwarmPanels(); lastPanels = ts; }
+    }
+    requestAnimationFrame(loop);
+  }
+  $('sw-play').onclick = () => { playing = !playing; $('sw-play').textContent = playing ? 'Pause' : 'Play'; };
+  $('sw-reset').onclick = () => { resetSwarm(); renderSwarmPanels(); };
+  $('sw-seed').onchange = () => { resetSwarm(); renderSwarmPanels(); };
+
+  function show(which) {
+    $('view-story').hidden = which !== 'story'; $('view-swarm').hidden = which !== 'swarm';
+    $('tab-story').setAttribute('aria-selected', which === 'story'); $('tab-swarm').setAttribute('aria-selected', which === 'swarm');
+    if (which === 'story') renderStory(); else { stopAuto(); renderSwarmPanels(); }
+    try { history.replaceState(null, '', '#' + which); } catch (e) { /* ignore */ }
+  }
+  $('tab-story').onclick = () => show('story'); $('tab-swarm').onclick = () => show('swarm');
+  window.addEventListener('resize', () => { if (!$('view-story').hidden) drawStoryChart(); });
+
+  resetStory(); resetSwarm();
+  if (reduce) playing = true;
+  show(location.hash === '#swarm' ? 'swarm' : 'story');
+  requestAnimationFrame(loop);
+  window.__actuary = { goTo, show, get sw() { return sw; } };
+})();
+</script>
+</body></html><!--local-only-->

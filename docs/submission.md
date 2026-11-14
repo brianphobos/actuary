@@ -6,7 +6,7 @@ Form: https://nearhackathon.com/#apply · deadline **14 Nov 2026, 23:59 UTC**. N
 |---|---|
 | Project name | Actuary |
 | Team lead | *(your name)* |
-| Email | *(your email; max 2 submissions per email)* |
+| Email | *(your email; max 2 projects per person)* |
 | Team size | 1 (Solo) |
 | Tracks | Agent Economy (`agents`), AI Security & Defense (`security`), Unstoppable DeFi (`defi`), AI Swarms (`swarms`), Open Innovation (`open`) |
 | NEAR wallet (mainnet, receives prize) | *(your .near or implicit account, lowercase)* |

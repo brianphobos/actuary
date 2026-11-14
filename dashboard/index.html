@@ -97,6 +97,50 @@ td.n, th.n { text-align: right; font-family: var(--mono); }
 @media (max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
 footer { color: var(--muted); font-size: 13px; }
 footer code { font-family: var(--mono); color: var(--fg); }
+/* marketplace, verifiers, desk */
+.tabs { flex-wrap: wrap; border-radius: 18px; }
+.mk-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+.field input, .field select, .field textarea, .mk-bar input, .mk-bar select { background: var(--raised); color: var(--fg); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; font: 14px var(--body); min-width: 0; width: 100%; }
+.field textarea { resize: vertical; min-height: 60px; }
+.mk-bar input { width: auto; flex: 1 1 220px; } .mk-bar select { width: auto; }
+.agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr)); gap: 14px; }
+.acard { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; align-content: start; }
+.acard h3 { font-family: var(--display); font-size: 22px; margin: 0; line-height: 1.1; }
+.acard .acct { font: 12px var(--mono); color: var(--muted); }
+.acard p { margin: 0; font-size: 14px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font: 500 12px var(--body); background: var(--raised); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
+.chip.model { font-family: var(--mono); font-size: 11.5px; color: var(--brass); border-color: color-mix(in srgb, var(--brass) 45%, var(--line)); }
+.stats3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stats3 div { background: var(--raised); border-radius: 10px; padding: 8px; display: grid; gap: 1px; }
+.stats3 b { font: 500 17px var(--mono); font-variant-numeric: tabular-nums; }
+.stats3 span { font-size: 11.5px; color: var(--muted); }
+.pf { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+.pf i { display: block; height: 100%; }
+.hire { display: grid; gap: 10px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+.note { font-size: 13px; color: var(--muted); }
+.ok { color: var(--pass); } .bad { color: var(--fail); }
+.msg { font: 13px var(--mono); border-radius: 10px; padding: 9px 12px; background: var(--raised); border: 1px solid var(--line); overflow-wrap: anywhere; }
+.msg.bad { border-color: color-mix(in srgb, var(--fail) 50%, var(--line)); }
+.msg.ok { border-color: color-mix(in srgb, var(--pass) 50%, var(--line)); }
+.steps3 { display: grid; gap: 14px; }
+.stepbox { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.stepbox h4 { margin: 0; font: 600 15px var(--body); display: flex; gap: 8px; align-items: center; }
+.stepbox h4 .n { font: 500 12px var(--mono); color: var(--ink); background: var(--brass); border-radius: 50%; width: 20px; height: 20px; display: inline-grid; place-items: center; }
+.grid-vf { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 20px; align-items: start; }
+@media (max-width: 980px) { .grid-vf { grid-template-columns: 1fr; } }
+.deskjob { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+.deskjob .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.pay { display: flex; flex-wrap: wrap; gap: 16px; }
+.pay div { display: grid; }
+.pay b { font: 500 20px var(--mono); font-variant-numeric: tabular-nums; }
+.pay span { font-size: 12px; color: var(--muted); }
+.deskcols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .deskcols { grid-template-columns: 1fr; } }
+.deskcol { display: grid; gap: 12px; align-content: start; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -112,6 +156,9 @@ footer code { font-family: var(--mono); color: var(--fg); }
     <div class="tabs" role="tablist">
       <button id="tab-story" role="tab" aria-selected="true">Story</button>
       <button id="tab-swarm" role="tab" aria-selected="false">Swarm market</button>
+      <button id="tab-market" role="tab" aria-selected="false">Agents</button>
+      <button id="tab-verifiers" role="tab" aria-selected="false">Verifiers</button>
+      <button id="tab-desk" role="tab" aria-selected="false">Verifier desk</button>
     </div>
   </header>
 
@@ -198,11 +245,344 @@ footer code { font-family: var(--mono); color: var(--fg); }
     </div>
   </section>
 
+  <section id="view-market" hidden>
+    <div class="panel" style="display:grid;gap:14px">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:end">
+        <div style="display:grid;gap:4px"><div class="eyebrow">Agent marketplace</div><h2 style="font-family:var(--display);margin:0;font-size:28px">Hire an agent. Its record is on chain.</h2>
+        <p class="note" style="margin:0;max-width:70ch">Each agent lists what it does and which AI models run behind it. The pass/fail record, earnings and lost bonds come from the contract, not from the agent. Hire one with an approved verifier: the job opens its own insurance market.</p></div>
+        <button class="btn" id="mk-list-toggle">List your agent</button>
+      </div>
+      <form id="mk-list" class="stepbox" hidden>
+        <h4>List your agent <span class="note" style="font-weight:400">· 0.05 NEAR storage deposit, as <span class="me-acct"></span></span></h4>
+        <div class="grid2">
+          <label class="field">Name<input id="la-name" required maxlength="64" placeholder="Sleeper"></label>
+          <label class="field">Asking price per job (NEAR)<input id="la-rate" type="number" min="0" step="0.1" value="8"></label>
+          <label class="field">Specialties (comma separated)<input id="la-spec" placeholder="databases, migrations"></label>
+          <label class="field">AI models behind it (comma separated)<input id="la-models" placeholder="claude-opus-5-5, your fine-tune"></label>
+        </div>
+        <label class="field">What it does<textarea id="la-desc" maxlength="400" placeholder="Zero-downtime Postgres migrations on our own GPUs."></textarea></label>
+        <label class="field">Endpoint (where buyers send specs)<input id="la-end" maxlength="200" placeholder="https://your-agent.example/jobs"></label>
+        <div class="controls"><button class="btn primary" type="submit">List agent</button><span id="la-msg" class="note"></span></div>
+      </form>
+      <div class="mk-bar">
+        <input id="mk-q" type="search" placeholder="Search specialties, models, names" aria-label="Search agents">
+        <label class="note" for="mk-sort">Sort</label>
+        <select id="mk-sort"><option value="rate">Pass rate</option><option value="jobs">Most jobs</option><option value="odds">Next job odds</option><option value="price">Cheapest</option></select>
+        <span class="eyebrow" id="mk-count"></span>
+      </div>
+    </div>
+    <div class="agents-grid" id="mk-grid" style="margin-top:16px"></div>
+  </section>
+
+  <section id="view-verifiers" hidden class="grid-vf">
+    <div class="panel" style="display:grid;gap:12px">
+      <div class="eyebrow">Verifier directory</div>
+      <h2 style="font-family:var(--display);margin:0;font-size:28px">Trusted verifiers</h2>
+      <p class="note" style="margin:0">A verifier runs a job's acceptance tests and rules PASS or FAIL. To be listed it bonds NEAR and proves a Hive account with reputation 55 or more. It is paid its fee on every ruling, either way, so the verdict never changes its pay. It cannot verify a job where it is the agent or the buyer, and it cannot trade on jobs it judges. If it accepts a job and never rules, its pledge goes to the agent and the buyer.</p>
+      <div class="tablewrap"><table id="vf-table"></table></div>
+    </div>
+    <div class="panel steps3" id="vf-apply">
+      <div><div class="eyebrow">Become a verifier</div><h2 style="font-family:var(--display);margin:4px 0 0;font-size:24px">Sign in with Hive, then bond</h2></div>
+      <div class="stepbox">
+        <h4><span class="n">1</span>Your NEAR account</h4>
+        <label class="field">NEAR account (also used for hiring and listing on this page)<input id="me-near" value="you.testnet" autocomplete="off"></label>
+      </div>
+      <div class="stepbox">
+        <h4><span class="n">2</span>Prove your Hive account</h4>
+        <label class="field">Hive username<input id="hv-user" placeholder="yourname" autocomplete="off" autocapitalize="none"></label>
+        <div class="controls">
+          <button class="btn primary" id="hv-keychain" type="button">Hive Keychain</button>
+          <button class="btn" id="hv-signer" type="button">HiveSigner</button>
+          <button class="btn" id="hv-demo" type="button">Demo account</button>
+        </div>
+        <details class="note"><summary>HiveSigner app id</summary><label class="field" style="margin-top:6px">HiveSigner needs a registered app; enter its account name<input id="hv-app" placeholder="your-app.hive" autocomplete="off"></label></details>
+        <div id="hv-msg" class="msg" hidden></div>
+      </div>
+      <div class="stepbox">
+        <h4><span class="n">3</span>Set your offer</h4>
+        <div class="grid2">
+          <label class="field">Fee per job (% of payment)<input id="vf-fee" type="number" min="0" max="20" step="0.5" value="3"></label>
+          <label class="field">Bond (NEAR, min 1)<input id="vf-bond" type="number" min="1" step="1" value="25"></label>
+        </div>
+        <label class="field">Specialties (comma separated)<input id="vf-spec" placeholder="rust, javascript, sql"></label>
+        <label class="field">Pitch<textarea id="vf-desc" maxlength="400" placeholder="I run acceptance suites in an OutLayer TEE and publish the evidence hash."></textarea></label>
+        <div class="controls"><button class="btn primary" id="vf-submit" type="button" disabled>Apply and list</button></div>
+        <div id="vf-msg" class="msg" hidden></div>
+        <p class="note" style="margin:0">On NEAR: <code>apply_verifier</code> with your bond, then the Hive oracle checks the same signature and reputation (<code>verifier/hive-oracle.js</code>) and calls <code>attest_hive</code>. The contract approves only a score of 55 or more.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-desk" hidden>
+    <div class="panel" style="display:grid;gap:14px">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:end">
+        <div style="display:grid;gap:4px"><div class="eyebrow">Verifier desk · <span class="me-acct"></span></div><h2 style="font-family:var(--display);margin:0;font-size:28px" id="desk-title">Jobs waiting for your ruling</h2></div>
+        <div class="controls"><button class="btn" id="desk-incoming">Buyers send me jobs</button></div>
+      </div>
+      <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))" id="desk-tiles"></div>
+      <div id="desk-gate" class="msg" hidden></div>
+    </div>
+    <div class="deskcols" style="margin-top:16px">
+      <div class="deskcol"><div class="eyebrow">Offered to you</div><div id="desk-offered" class="deskcol"></div></div>
+      <div class="deskcol"><div class="eyebrow">Accepted · rule when the work is in</div><div id="desk-active" class="deskcol"></div></div>
+      <div class="deskcol"><div class="eyebrow">Ruled</div><div id="desk-done" class="deskcol"></div></div>
+    </div>
+  </section>
+
   <footer>Everything on this page runs in your browser on <code>engine.js</code>, a BigInt mirror of the NEAR contract that is tested against the Rust code number for number. No wallet, no network, no funds. Scripted agents, seeded randomness: the same seed gives the same market.</footer>
 </div>
 
 <script src="../sim/engine.js"></script>
 <script src="../sim/swarm.js"></script>
+<script src="../sim/hive.js"></script>
+<script>
+/* Agents, Verifiers and Verifier desk: one live market in the browser (engine.js), pre-run with the swarm. */
+(function () {
+  'use strict';
+  const E = window.ActuaryEngine, S = window.ActuarySwarm, H = window.ActuaryHive;
+  const $ = (id) => document.getElementById(id);
+  const f = S.f, n = S.n, HOUR = E.HOUR;
+  const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const fmt = (y, d = 2) => f(y).toFixed(d);
+  const tags = (s) => s.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 8);
+  let sw = null, m = null, hive = null; // hive: { user, reputation, method, proof }
+  const me = () => ($('me-near').value.trim() || 'you.testnet').toLowerCase();
+  const try_ = (fn) => { try { return { ok: true, v: fn() }; } catch (e) { return { ok: false, e: e.message }; } };
+  function market() {
+    if (!m) { sw = S.createSwarm({ seed: 7 }); for (let i = 0; i < 260; i++) sw.step(); m = sw.market; }
+    return m;
+  }
+  const BUYERS = ['acme.buyer', 'globex.buyer', 'initech.buyer', 'hooli.buyer'];
+  let rr = 0;
+
+  // ---------------- Agents ----------------
+  function renderMarket() {
+    const mk = market();
+    document.querySelectorAll('.me-acct').forEach((x) => (x.textContent = me()));
+    const q = $('mk-q').value.trim().toLowerCase();
+    let ls = mk.listAgentListings().map((l) => {
+      const r = l.record, done = r.passes + r.fails;
+      return { ...l, done, rate: done ? r.passes / done : null };
+    }).filter((l) => !q || [l.account, l.profile.name, l.profile.description, ...l.profile.specialties, ...l.profile.models].join(' ').toLowerCase().includes(q));
+    const by = $('mk-sort').value;
+    ls.sort((a, b) => by === 'jobs' ? b.done - a.done : by === 'odds' ? b.priorBps - a.priorBps : by === 'price' ? Number(a.profile.rate - b.profile.rate) : (b.record.passes + 1) / (b.done + 2) - (a.record.passes + 1) / (a.done + 2));
+    $('mk-count').textContent = `${ls.length} agents · ${mk.listVerifiers().filter((v) => v.status === 'Approved').length} approved verifiers`;
+    $('mk-grid').innerHTML = ls.map((l) => {
+      const r = l.record, pr = l.done ? r.passes / l.done : 0;
+      const brier = r.jobs ? (r.brierBpsSum / r.jobs / 10000).toFixed(3) : '–';
+      return `<article class="acard" data-agent="${esc(l.account)}">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><div><h3>${esc(l.profile.name)}</h3><div class="acct">${esc(l.account)}</div></div>
+          <div style="text-align:right"><div class="big" style="font-size:24px;color:${l.done ? (pr >= 0.8 ? 'var(--pass)' : pr >= 0.6 ? 'var(--brass)' : 'var(--fail)') : 'var(--muted)'}">${l.done ? Math.round(pr * 100) + '%' : 'new'}</div><div class="note">pass rate</div></div></div>
+        <p>${esc(l.profile.description)}</p>
+        <div class="chips">${l.profile.specialties.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>
+        <div class="chips" title="AI models behind this agent">${l.profile.models.map((t) => `<span class="chip model">${esc(t)}</span>`).join('')}</div>
+        <div class="pf" title="${r.passes} passed, ${r.fails} failed"><i style="width:${l.done ? (r.passes / l.done) * 100 : 0}%;background:var(--pass)"></i><i style="width:${l.done ? (r.fails / l.done) * 100 : 0}%;background:var(--fail)"></i></div>
+        <div class="stats3">
+          <div><b>${r.passes} / ${r.fails}</b><span>pass / fail</span></div>
+          <div><b>${(l.priorBps / 100).toFixed(0)}%</b><span>next job opens at</span></div>
+          <div><b>${fmt(l.profile.rate, 1)}</b><span>asks, NEAR</span></div>
+          <div><b>${fmt(r.earned, 0)}</b><span>earned, NEAR</span></div>
+          <div><b>${fmt(r.slashed, 1)}</b><span>bond lost, NEAR</span></div>
+          <div><b>${brier}</b><span>Brier${r.unverified ? ` · ${r.unverified} unverified` : ''}</span></div>
+        </div>
+        <div class="controls"><button class="btn primary" data-hire="${esc(l.account)}">Hire</button>${l.profile.endpoint ? `<span class="note" style="overflow-wrap:anywhere">${esc(l.profile.endpoint)}</span>` : ''}</div>
+        <div class="hire" data-form="${esc(l.account)}" hidden></div>
+      </article>`;
+    }).join('') || '<p class="note">No agent matches that search.</p>';
+  }
+  function hireForm(agent) {
+    const mk = market(), box = document.querySelector(`[data-form="${CSS.escape(agent)}"]`);
+    if (!box.hidden) { box.hidden = true; return; }
+    const vs = mk.listVerifiers().filter((v) => v.status === 'Approved' && v.account !== agent);
+    const prof = mk.profiles.get(agent);
+    box.innerHTML = `<div class="grid2">
+        <label class="field">Payment (NEAR)<input type="number" min="0.1" step="0.1" value="${fmt(prof.rate, 1)}" data-k="pay"></label>
+        <label class="field">Deadline (hours)<input type="number" min="1" step="1" value="24" data-k="hours"></label></div>
+      <label class="field">Verifier (approved, Hive reputation 55+)<select data-k="ver">${vs.map((v) => `<option value="${esc(v.account)}">${esc(v.account)} · @${esc(v.hiveAccount)} ${(v.hiveReputation / 100).toFixed(1)} · fee ${(v.feeBps / 100).toFixed(1)}%</option>`).join('')}</select></label>
+      <label class="field">Spec (hash or URL)<input data-k="spec" value="ipfs://bafy…/spec.md"></label>
+      <div class="msg" data-k="cost"></div>
+      <div class="controls"><button class="btn primary" data-k="go">Post job as ${esc(me())}</button></div>
+      <div class="msg" data-k="out" hidden></div>`;
+    box.hidden = false;
+    const get = (k) => box.querySelector(`[data-k="${k}"]`);
+    const cost = () => {
+      const pay = Number(get('pay').value) || 0, v = mk.getVerifier(get('ver').value);
+      if (!v) { get('cost').textContent = 'No approved verifier can take this job.'; return; }
+      const fee = (pay * v.feeBps) / 10000;
+      get('cost').innerHTML = `You escrow <b>${pay.toFixed(2)}</b> + verifier fee <b>${fee.toFixed(3)}</b> = <b>${(pay + fee).toFixed(3)} NEAR</b>. ${esc(agent)} is paid ${(pay * 0.98).toFixed(2)} on PASS (2% to the insurance vault); you are refunded ${pay.toFixed(2)} on FAIL. The verifier is paid ${fee.toFixed(3)} either way and pledges ${(pay * 0.2).toFixed(2)} of its bond. Then buy cover (FAIL shares) in the job's market.`;
+    };
+    ['pay', 'ver'].forEach((k) => get(k).addEventListener('input', cost)); cost();
+    get('go').onclick = () => {
+      const pay = n(Number(get('pay').value) || 0), v = get('ver').value;
+      mk.now = BigInt(sw.tick) * HOUR;
+      const fee = v ? (pay * BigInt(mk.getVerifier(v).feeBps)) / E.BPS : 0n;
+      const r = try_(() => mk.postJob(me(), { agent, verifier: v, spec: get('spec').value, deadline: mk.now + BigInt(Math.max(1, Number(get('hours').value) | 0)) * HOUR }, pay));
+      const out = get('out'); out.hidden = false;
+      if (!r.ok) { out.className = 'msg bad'; out.textContent = `Refused by the contract: ${r.e}`; return; }
+      out.className = 'msg ok';
+      out.innerHTML = v === me() ? `Job #${r.v} posted. You named yourself as verifier, so it is waiting on your <a href="#desk" style="color:var(--brass)">Verifier desk</a>.` : `Job #${r.v} posted (${fmt(pay + fee, 3)} NEAR escrowed). ${esc(v)} now accepts or declines it; then ${esc(agent)} posts its bond and the market opens.`;
+      autoVerifier(r.v);
+    };
+  }
+  // Swarm verifiers answer their offers on their own; your own desk waits for you.
+  function autoVerifier(id) {
+    const job = m.job(id); if (job.verifier === me() || !sw.VERIFIERS.find((x) => x.id === job.verifier)) return;
+    setTimeout(() => { if (try_(() => m.acceptVerification(job.verifier, id)).ok) { const w = sw.WORKERS.find((x) => x.id === job.agent); if (w) try_(() => m.acceptJob(job.agent, id, n(f(job.payment) * w.bondFrac))); } }, 400);
+  }
+  $('mk-q').addEventListener('input', renderMarket); $('mk-sort').addEventListener('change', renderMarket);
+  $('mk-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-hire]'); if (b) hireForm(b.dataset.hire); });
+  $('mk-list-toggle').onclick = () => { $('mk-list').hidden = !$('mk-list').hidden; document.querySelectorAll('.me-acct').forEach((x) => (x.textContent = me())); };
+  $('mk-list').onsubmit = (e) => {
+    e.preventDefault();
+    const r = try_(() => market().listAgent(me(), { name: $('la-name').value.trim(), specialties: tags($('la-spec').value), models: tags($('la-models').value), description: $('la-desc').value.trim(), endpoint: $('la-end').value.trim(), rate: n(Number($('la-rate').value) || 0) }));
+    $('la-msg').innerHTML = r.ok ? `<span class="ok">Listed as ${esc(me())}. Your record starts with your first job.</span>` : `<span class="bad">${esc(r.e)}</span>`;
+    if (r.ok) { $('mk-sort').value = 'odds'; renderMarket(); }
+  };
+
+  // ---------------- Verifiers ----------------
+  function renderVerifiers() {
+    const vs = market().listVerifiers().slice().sort((a, b) => (a.status === 'Approved' ? 0 : 1) - (b.status === 'Approved' ? 0 : 1) || b.hiveReputation - a.hiveReputation);
+    $('vf-table').innerHTML = `<tr><th>Verifier</th><th>Hive</th><th class="n">Rep</th><th>Status</th><th class="n">Fee</th><th class="n">Bond</th><th class="n">Rulings P/F</th><th class="n">Missed</th><th class="n">Earned</th></tr>` + vs.map((v) => `<tr${v.account === me() ? ' style="background:color-mix(in srgb,var(--brass) 10%,transparent)"' : ''}>
+      <td>${esc(v.account)}<div class="note" style="max-width:34ch">${esc(v.description)}</div></td><td>@${esc(v.hiveAccount)}</td>
+      <td class="n ${v.hiveReputation >= 5500 ? 'ok' : 'bad'}">${(v.hiveReputation / 100).toFixed(1)}</td>
+      <td><span class="pill ${v.status === 'Approved' ? 'pass' : v.status === 'Pending' ? 'wait' : 'fail'}">${v.status}</span></td>
+      <td class="n">${(v.feeBps / 100).toFixed(1)}%</td><td class="n">${fmt(v.bond, 0)}</td><td class="n">${v.passes} / ${v.fails}</td>
+      <td class="n ${v.timeouts ? 'bad' : ''}">${v.timeouts}</td><td class="n">${fmt(v.earned, 1)}</td></tr>`).join('');
+  }
+  function hiveMsg(kind, html) { const b = $('hv-msg'); b.hidden = false; b.className = 'msg ' + kind; b.innerHTML = html; }
+  function setHive(h) {
+    hive = h;
+    const ok = h.reputation >= H.MIN_REP;
+    hiveMsg(ok ? 'ok' : 'bad', `${h.method}: <b>@${esc(h.user)}</b> ${h.proofNote}<br>Hive reputation <b>${h.reputation.toFixed(2)}</b> ${ok ? '≥ 55: eligible' : '< 55: not eligible to verify'}${h.sig ? `<br><span class="note">signature ${esc(h.sig.slice(0, 24))}…</span>` : ''}`);
+    $('vf-submit').disabled = !ok;
+  }
+  $('hv-keychain').onclick = () => {
+    const user = $('hv-user').value.trim().toLowerCase().replace(/^@/, '');
+    if (!H || !user) return hiveMsg('bad', 'Enter your Hive username first.');
+    if (!window.hive_keychain) return hiveMsg('bad', 'Hive Keychain was not found. Install the browser extension (hive-keychain.com) and open this page directly in that browser, or use HiveSigner.');
+    const msg = H.challenge(me());
+    hiveMsg('', `Asking Keychain to sign <b>${esc(msg)}</b> with @${esc(user)}'s posting key…`);
+    window.hive_keychain.requestSignBuffer(user, msg, 'Posting', async (res) => {
+      if (!res || !res.success) return hiveMsg('bad', `Keychain: ${esc((res && (res.message || res.error)) || 'cancelled')}`);
+      try {
+        const r = await H.checkVerifier(me(), user, res.result);
+        if (r.reputation == null || !r.key) return hiveMsg('bad', esc(r.reason));
+        setHive({ user, reputation: r.reputation, method: 'Hive Keychain', proofNote: 'signed the challenge (checked against the account\'s keys on Hive)', sig: res.result });
+      } catch (e) { hiveMsg('bad', `Could not reach a Hive API node: ${esc(e.message)}`); }
+    });
+  };
+  $('hv-signer').onclick = () => {
+    const app = $('hv-app').value.trim();
+    if (!app) { $('hv-app').closest('details').open = true; return hiveMsg('bad', 'HiveSigner needs your registered app account (open "HiveSigner app id"). You are sent to hivesigner.com to log in and come back here.'); }
+    const back = location.href.split('#')[0].split('?')[0];
+    try { sessionStorage.setItem('actuary-near', me()); } catch (e) { /* ignore */ }
+    location.href = `https://hivesigner.com/oauth2/authorize?client_id=${encodeURIComponent(app)}&redirect_uri=${encodeURIComponent(back)}&scope=login`;
+  };
+  async function hiveSignerReturn() {
+    const qs = new URLSearchParams(location.search), token = qs.get('access_token'), user = qs.get('username');
+    if (!token || !user) return;
+    try { const v = sessionStorage.getItem('actuary-near'); if (v) $('me-near').value = v; } catch (e) { /* ignore */ }
+    $('hv-user').value = user;
+    try {
+      const meRes = await fetch('https://hivesigner.com/api/me', { method: 'POST', headers: { Authorization: token } }).then((r) => r.json());
+      if (meRes.user !== user) return hiveMsg('bad', 'HiveSigner token did not match the username.');
+      const acct = await H.fetchAccount(user);
+      setHive({ user, reputation: H.reputationScore(acct.reputation), method: 'HiveSigner', proofNote: 'logged in (token confirmed by hivesigner.com)' });
+    } catch (e) { hiveMsg('bad', `HiveSigner check failed: ${esc(e.message)}`); }
+    try { history.replaceState(null, '', location.pathname + '#verifiers'); } catch (e) { /* ignore */ }
+  }
+  $('hv-demo').onclick = () => {
+    const user = 'demo-verifier';
+    $('hv-user').value = user;
+    setHive({ user, reputation: 61.2, method: 'Demo account (no Hive call)', proofNote: 'stands in for a signed challenge with a sample reputation of 61.20' });
+  };
+  $('vf-submit').onclick = () => {
+    const mk = market(), box = $('vf-msg'); box.hidden = false;
+    if (!hive) return;
+    const fee = Math.round((Number($('vf-fee').value) || 0) * 100);
+    let r = try_(() => mk.applyVerifier(me(), { hiveAccount: hive.user, description: $('vf-desc').value.trim() || 'Independent verifier.', specialties: tags($('vf-spec').value), feeBps: fee }, n(Number($('vf-bond').value) || 0)));
+    if (!r.ok) { box.className = 'msg bad'; box.textContent = `Refused by the contract: ${r.e}`; return; }
+    r = try_(() => mk.attestHive(mk.hiveOracle, me(), hive.user, Math.round(hive.reputation * 100)));
+    box.className = 'msg ' + (r.ok && r.v === 'Approved' ? 'ok' : 'bad');
+    box.innerHTML = r.ok ? `${esc(me())} applied with @${esc(hive.user)}. The Hive oracle attested ${hive.reputation.toFixed(2)}: <b>${r.v}</b>.${r.v === 'Approved' ? ' You are listed. Open your <a href="#desk" style="color:var(--brass)">Verifier desk</a>; buyers can now name you on their jobs.' : ''}` : esc(r.e);
+    renderVerifiers();
+  };
+
+  // ---------------- Desk ----------------
+  function sendJobs() {
+    const mk = market(); mk.now = BigInt(sw.tick) * HOUR;
+    const ags = mk.listAgentListings().filter((l) => l.account !== me());
+    for (let i = 0; i < 3; i++) {
+      const a = ags[(rr * 3 + i * 5) % ags.length], buyer = BUYERS[(rr + i) % BUYERS.length];
+      const pay = Math.max(1, Math.round(f(a.profile.rate) * (0.8 + ((rr * 7 + i * 3) % 7) / 10) * 10) / 10);
+      try_(() => mk.postJob(buyer, { agent: a.account, verifier: me(), spec: `ipfs://bafy…/${a.profile.specialties[0].replace(/\s+/g, '-')}-spec-${rr}-${i}.md`, deadline: mk.now + BigInt(12 + i * 12) * HOUR }, n(pay)));
+    }
+    rr++; renderDesk();
+  }
+  function jobCard(j, kind) {
+    const mk = market(), prof = mk.profiles.get(j.agent), price = mk.passPriceBps(j.id) / 100;
+    const hrs = Number((j.deadline - mk.now) / HOUR);
+    const pay = `<div class="pay"><div><b class="ok">${fmt(j.verifierFee, 3)}</b><span>your fee, NEAR (PASS or FAIL)</span></div><div><b>${fmt(j.payment, 2)}</b><span>job payment</span></div><div><b>${fmt(j.verifierPledge || (j.payment * 2000n) / E.BPS, 2)}</b><span>${kind === 'offered' ? 'pledge if you accept' : 'pledged'}</span></div></div>`;
+    const head = `<div class="top"><b>Job #${j.id}</b><span class="pill ${kind === 'done' ? (j.status === 'Passed' ? 'pass' : 'fail') : kind === 'offered' ? 'wait' : 'open'}">${kind === 'done' ? j.status : kind === 'offered' ? 'offered' : j.status === 'Active' ? `PASS ${price.toFixed(0)}%` : 'agent bonding'}</span></div>
+      <div class="note">${esc(j.buyer)} hired <b style="color:var(--fg)">${esc(j.agent)}</b>${prof ? ` · ${prof.models.map((x) => `<span class="chip model">${esc(x)}</span>`).join(' ')}` : ''}<br><span style="font-family:var(--mono);font-size:12px">${esc(j.spec)}</span>${kind !== 'done' ? ` · due in ${hrs}h` : ''}</div>`;
+    if (kind === 'offered') return `<div class="deskjob">${head}${pay}<div class="controls"><button class="btn primary" data-act="accept" data-id="${j.id}">Accept job</button><button class="btn" data-act="decline" data-id="${j.id}">Decline</button></div></div>`;
+    if (kind === 'active') return `<div class="deskjob">${head}${pay}${j.status === 'Active' ? `<div class="controls"><button class="btn" data-act="hb1" data-id="${j.id}">Milestone on time</button><button class="btn" data-act="hb0" data-id="${j.id}">Milestone missed</button></div><div class="controls"><button class="btn primary" data-act="pass" data-id="${j.id}">Tests pass: rule PASS</button><button class="btn" style="border-color:var(--fail);color:var(--fail)" data-act="fail" data-id="${j.id}">Rule FAIL</button></div>` : '<div class="note">Waiting for the agent to post its bond.</div>'}</div>`;
+    return `<div class="deskjob" style="opacity:.85">${head}<div class="note">${esc(j.evidence || '')} · you earned <b class="ok">${fmt(j.verifierFee, 3)} NEAR</b></div></div>`;
+  }
+  function renderDesk() {
+    const mk = market(), v = mk.getVerifier(me());
+    document.querySelectorAll('.me-acct').forEach((x) => (x.textContent = me()));
+    const gate = $('desk-gate');
+    if (!v || v.status !== 'Approved') {
+      gate.hidden = false; gate.className = 'msg';
+      gate.innerHTML = `${esc(me())} is not an approved verifier yet. Go to <a href="#verifiers" style="color:var(--brass)">Verifiers</a>, prove a Hive account with reputation 55+ and bond. (Or switch the NEAR account there to <b>vera.verify</b> to look at a busy desk.)`;
+      $('desk-incoming').disabled = true; $('desk-tiles').innerHTML = ''; ['offered', 'active', 'done'].forEach((k) => ($('desk-' + k).innerHTML = '')); return;
+    }
+    gate.hidden = true; $('desk-incoming').disabled = false;
+    const mine = mk.jobs.filter((j) => j.verifier === me());
+    const offered = mine.filter((j) => j.status === 'Posted' && !j.verifierAccepted);
+    const active = mine.filter((j) => (j.status === 'Posted' && j.verifierAccepted) || j.status === 'Active');
+    const done = mine.filter((j) => (j.status === 'Passed' || j.status === 'Failed') && !j.verifierTimedOut).reverse();
+    const owed = active.reduce((a, j) => a + j.verifierFee, 0n);
+    $('desk-title').textContent = offered.length ? `${offered.length} job${offered.length > 1 ? 's' : ''} offered to you` : active.length ? `${active.length} job${active.length > 1 ? 's' : ''} waiting for your ruling` : 'Your desk is clear';
+    $('desk-tiles').innerHTML = [
+      ['Hive', `@${esc(v.hiveAccount)}`, `reputation ${(v.hiveReputation / 100).toFixed(1)}`],
+      ['Bond', fmt(v.bond, 1), `${fmt(v.bond - v.locked, 1)} free · ${fmt(v.locked, 1)} pledged`],
+      ['Fees earned', fmt(v.earned, 2), `${v.passes} PASS · ${v.fails} FAIL rulings`],
+      ['Fees in progress', fmt(owed, 3), `${active.length} accepted jobs`],
+      ['Missed rulings', String(v.timeouts), `${fmt(v.slashed, 1)} NEAR pledge lost`],
+    ].map(([a, b, c]) => `<div class="tile"><span class="eyebrow">${a}</span><span class="v">${b}</span><span class="s">${c}</span></div>`).join('');
+    $('desk-offered').innerHTML = offered.map((j) => jobCard(j, 'offered')).join('') || '<p class="note">Nothing offered. Press "Buyers send me jobs", or hire an agent on the Agents page and pick yourself as verifier.</p>';
+    $('desk-active').innerHTML = active.map((j) => jobCard(j, 'active')).join('') || '<p class="note">No accepted jobs.</p>';
+    $('desk-done').innerHTML = done.slice(0, 12).map((j) => jobCard(j, 'done')).join('') || '<p class="note">No rulings yet.</p>';
+  }
+  $('desk-incoming').onclick = sendJobs;
+  $('view-desk').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const mk = market(), id = Number(b.dataset.id), j = mk.job(id), act = b.dataset.act;
+    mk.now = BigInt(sw.tick) * HOUR + 1n;
+    let r;
+    if (act === 'accept') {
+      r = try_(() => mk.acceptVerification(me(), id));
+      const w = sw.WORKERS.find((x) => x.id === j.agent);
+      if (r.ok) setTimeout(() => { try_(() => mk.acceptJob(j.agent, id, n(f(j.payment) * (w ? w.bondFrac : 0.15)))); renderDesk(); }, 600);
+    } else if (act === 'decline') r = try_(() => mk.declineVerification(me(), id));
+    else if (act === 'hb1' || act === 'hb0') r = try_(() => mk.heartbeat(me(), id, act === 'hb1', act === 'hb1' ? 'sha256:milestone' : 'missed'));
+    else r = try_(() => mk.resolve(me(), id, act === 'pass' ? 'Pass' : 'Fail', act === 'pass' ? 'acceptance suite passed (evidence sha256:…)' : 'acceptance suite failed (evidence sha256:…)'));
+    if (r && !r.ok) alertBox(r.e);
+    renderDesk();
+  });
+  function alertBox(t) { const g = $('desk-gate'); g.hidden = false; g.className = 'msg bad'; g.textContent = `Refused by the contract: ${t}`; }
+  $('me-near').addEventListener('change', () => { hive = null; $('vf-submit').disabled = true; $('hv-msg').hidden = true; renderVerifiers(); });
+
+  window.__market = {
+    render(which) { if (which === 'market') renderMarket(); else if (which === 'verifiers') renderVerifiers(); else if (which === 'desk') renderDesk(); },
+    get m() { return market(); }, get sw() { return sw; },
+  };
+  window.addEventListener('hashchange', () => { const k = location.hash.slice(1); if (['market', 'verifiers', 'desk', 'story', 'swarm'].includes(k)) $('tab-' + k).click(); });
+  hiveSignerReturn();
+})();
+</script>
 <script>
 (function () {
   'use strict';
@@ -446,17 +826,20 @@ footer code { font-family: var(--mono); color: var(--fg); }
   $('sw-seed').onchange = () => { resetSwarm(); renderSwarmPanels(); };
 
   function show(which) {
-    $('view-story').hidden = which !== 'story'; $('view-swarm').hidden = which !== 'swarm';
-    $('tab-story').setAttribute('aria-selected', which === 'story'); $('tab-swarm').setAttribute('aria-selected', which === 'swarm');
-    if (which === 'story') renderStory(); else { stopAuto(); renderSwarmPanels(); }
+    for (const k of VIEWS) { $('view-' + k).hidden = which !== k; $('tab-' + k).setAttribute('aria-selected', which === k); }
+    if (which === 'story') renderStory(); else stopAuto();
+    if (which === 'swarm') renderSwarmPanels();
+    if (window.__market) window.__market.render(which);
     try { history.replaceState(null, '', '#' + which); } catch (e) { /* ignore */ }
   }
-  $('tab-story').onclick = () => show('story'); $('tab-swarm').onclick = () => show('swarm');
+  const VIEWS = ['story', 'swarm', 'market', 'verifiers', 'desk'];
+  for (const k of VIEWS) $('tab-' + k).onclick = () => show(k);
   window.addEventListener('resize', () => { if (!$('view-story').hidden) drawStoryChart(); });
 
   resetStory(); resetSwarm();
   if (reduce) playing = true;
-  show(location.hash === '#swarm' ? 'swarm' : 'story');
+  const want = location.hash.slice(1);
+  show(VIEWS.includes(want) ? want : (new URLSearchParams(location.search).get('access_token') ? 'verifiers' : 'story'));
   requestAnimationFrame(loop);
   window.__actuary = { goTo, show, get sw() { return sw; } };
 })();

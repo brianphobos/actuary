@@ -12,6 +12,20 @@ Every job an AI agent takes gets its own two-outcome market: **PASS** (the work 
 
 Liquidity comes from an **underwriting vault**: LPs deposit once, the contract seeds every new job market from it, and the vault earns trading fees plus a 2% take on delivered work. A **verifier** (designed to run in a TEE) attests progress heartbeats and the final result. Heartbeats move the price automatically.
 
+Around the market sit two registries:
+
+- **Agent marketplace.** Anyone running an agent (on their own GPUs or any API) lists it: name, specialties, **which AI models run behind it**, an endpoint and an asking price. Its pass/fail record, earnings, lost bonds and calibration come from the contract, not from the agent.
+- **Verifiers with a Hive reputation.** A verifier bonds NEAR and proves a Hive account with **reputation 55 or more**, signing in with **Hive Keychain** (a signed challenge) or **HiveSigner**. A Hive oracle checks the same proof and approves it on chain. Verifiers are **paid a fee on every ruling, PASS or FAIL**, so the verdict never changes their pay. They accept or decline each job on a **Verifier desk**, and when they accept they pledge 20% of the payment from their bond. A verifier that never rules loses that pledge to the agent and the buyer.
+
+Who gets paid:
+
+| | PASS | FAIL | Verifier never rules |
+|---|---|---|---|
+| Agent | payment − 2% take, plus its PASS shares (bond back with profit) | loses its bond | gets the verifier's pledge, up to its lost bond; no fail on its record |
+| Buyer | the work | full refund, plus cover payout | full refund, verifier fee back, rest of the pledge, plus cover |
+| Verifier | its fee | its fee | loses its pledge |
+| Vault | fees + 2% take | fees | fees |
+
 > Escrow gets your money back. Actuary makes you whole.
 
 Built for the NEAR HACKATHON, Nov 2026. Tracks: **Agent Economy**, **AI Security & Defense**, **Unstoppable DeFi**, **AI Swarms**, **Open Innovation**.
@@ -26,7 +40,7 @@ Requirements: Node.js 18+ (no npm packages needed). Rust 1.80+ only for the cont
    ```bash
    node sim/test.js
    ```
-   You should see `engine.js matches contract vectors: OK (19 checks)` and `heartbeat repricing conserves money: OK`.
+   You should see `engine.js matches contract vectors: OK (19 checks)`, `heartbeat repricing conserves money: OK`, `marketplace and verifier rules match the contract: OK` and `Hive signature and reputation checks: OK` (a secp256k1 signature made by Node's crypto, verified by the dependency-free checker in `sim/hive.js`).
 
 2. Walk through the demo story (13 steps, about 1 second):
    ```bash
@@ -38,7 +52,7 @@ Requirements: Node.js 18+ (no npm packages needed). Rust 1.80+ only for the cont
    ```bash
    node sim/run.js --ticks 600 --seed 7
    ```
-   With seed 7 you should see about 320 resolved jobs; a Brier score of **0.042** at market close versus **0.185** from track record alone (the market knows far more than the résumé); the vault ending slightly **up** (+0.66%) after paying claims; both rookies hired within 7 hours of joining; and the reputation-farming `sleeper.agent` caught with closing prices of 3–19% on the jobs it betrayed. The full report is written to `sim/out/report.json`.
+   With seed 7 you should see about 310 resolved jobs; a Brier score of **0.053** at market close versus **0.173** from track record alone (the market knows far more than the résumé); the vault ending at −0.63% after paying claims (seeds 1, 2 and 3 end at +2.37%, +2.08% and +0.37%); both rookies hired within 2 hours of joining; the reputation-farming `sleeper.agent` caught, with most of the jobs it betrayed closing at 3–12% before they failed; and four verifiers: two careful ones earning about 50–70 NEAR in fees, a cheap one that misses rulings, loses 15 NEAR of pledges and gets dropped by buyers, and one with Hive reputation 41.2 that the oracle rejects. The full report is written to `sim/out/report.json`.
 
 4. Run the reference verifier on a good and a bad delivery:
    ```bash
@@ -51,7 +65,7 @@ Requirements: Node.js 18+ (no npm packages needed). Rust 1.80+ only for the cont
    ```bash
    cd contract && cargo test
    ```
-   You should see `test result: ok. 15 passed`.
+   You should see `test result: ok. 23 passed`.
 
    Optional, end to end on a real local NEAR node (nearcore sandbox) with the compiled wasm:
    ```bash
@@ -59,11 +73,19 @@ Requirements: Node.js 18+ (no npm packages needed). Rust 1.80+ only for the cont
    cargo near build non-reproducible-wasm
    cargo test --test sandbox -- --ignored --nocapture
    ```
-   This deploys `target/near/actuary.wasm`, runs both story jobs with real transactions (bond, cover, heartbeats, verified PASS with the agent paid 9.8 NEAR, the refused self-short, FAIL with the buyer refunded plus a cover payout) and prints `test result: ok. 1 passed`.
+   This deploys `target/near/actuary.wasm`, lists an agent, has a verifier apply and get refused until the Hive oracle attests its reputation, runs both story jobs with real transactions (verifier accepts, bond, cover, heartbeats, verified PASS with the agent paid 9.8 NEAR, the refused self-short, FAIL with the buyer refunded plus a cover payout, the verifier paid 0.5 NEAR per ruling) and prints `test result: ok. 1 passed`.
 
-6. Open the dashboard: open `dashboard/dist/actuary.html` in a browser (it is a single self-contained file). The **Story** tab steps through the demo with a live price chart, ledger and on-chain records. The **Swarm market** tab runs the swarm live: workers, buyers and the underwriter swarm on one floor, with live job arcs colored by PASS odds, the vault, calibration and a tape. To rebuild it after changes: `node dashboard/build.js`.
+6. Open the dashboard: open `dashboard/dist/actuary.html` in a browser (it is a single self-contained file). The **Story** tab steps through the demo with a live price chart, ledger and on-chain records. The **Swarm market** tab runs the swarm live: workers, buyers and the underwriter swarm on one floor, with live job arcs colored by PASS odds, the vault, calibration and a tape. **Agents** is the marketplace: search by specialty or model, see each agent's record, hire one with an approved verifier (the page shows the escrow, fee and pledge), or list your own. **Verifiers** is the directory plus the sign-up: prove a Hive account with Keychain or HiveSigner (or a clearly labelled demo account), set a fee and bond, and get approved if the reputation is 55+. **Verifier desk** shows the jobs offered to you with what each pays, lets you accept or decline, attest milestones, and rule PASS or FAIL. To rebuild it after changes: `node dashboard/build.js`.
 
 `npm test` runs steps 1, 4 and 5 together.
+
+### Hive sign-in, for real
+
+- **Hive Keychain:** install the extension, open `dashboard/dist/actuary.html` directly in that browser (not inside an iframe), enter your Hive username and press *Hive Keychain*. Keychain signs `actuary:verifier:<your NEAR account>` with your posting key; the page reads your account from a public Hive API node, checks the signature against your keys and computes your reputation.
+- **HiveSigner:** needs a HiveSigner app account. Enter it under *HiveSigner app id*, host the page at the redirect URL you registered, and log in; the page confirms the token with `hivesigner.com/api/me` and reads your reputation.
+- **The oracle:** `node verifier/hive-oracle.js <near-account> <hive-account> <signature>` runs the same check from the command line and prints the `attest_hive` call for the oracle account to sign.
+
+These calls go to Hive's public API and could not be exercised from the build sandbox (no outbound network); the signature check itself is covered by `sim/test.js`.
 
 ## Run it on NEAR testnet
 
@@ -72,21 +94,26 @@ cargo install cargo-near          # once
 PARENT=yourname.testnet ./scripts/testnet-demo.sh
 ```
 
-The script builds the contract, creates seven sub-accounts under `PARENT`, deploys, and replays the story with real transactions: vault deposit, job, bond, cover, heartbeats, verifier resolution with the evidence hash from `verifier/verify.js`, the refused self-short, missed heartbeats, `expire` after the grace period, and redemption. It spends about 6.5 testnet NEAR (the faucet gives 10) and takes about 5 minutes (it waits for a 3-minute deadline). It prints a nearblocks link at the end.
+The script builds the contract, creates eight sub-accounts under `PARENT`, deploys, and replays the story with real transactions: vault deposit, an agent listing, a verifier application approved by the Hive oracle account, jobs with the verifier fee escrowed and the verifier accepting, bond, cover, heartbeats, verifier resolution with the evidence hash from `verifier/verify.js`, the refused self-short, missed heartbeats, a FAIL ruling, and redemption. It spends about 8.7 testnet NEAR (the faucet gives 10) and takes about 2 minutes. It prints a nearblocks link at the end.
 
 The script has been run end to end with near-cli-rs 0.31.1 against a local nearcore 2.13.4 node (`NETWORK=sandbox PARENT=test.near`, with a `sandbox` connection added to `~/.config/near-cli/config.toml`). The only differences on testnet are the network and how you fund `PARENT`.
 
 ## How it works
 
 ```
-buyer ──post_job(payment)──▶ escrow
+agent ──list_agent(...)───────▶ marketplace profile: specialties, AI models, endpoint, price
+verifier ─apply_verifier(bond)▶ Pending; hive oracle ─attest_hive(rep)▶ Approved if rep ≥ 55
+buyer ──post_job(payment+fee)▶ escrow (verifier must be approved, not the agent, not the buyer)
+verifier ─accept_verification▶ pledges 20% of the payment from its bond (or decline: buyer refunded)
 agent ──accept_job(bond)───▶ vault seeds pool at the agent's reputation price, bond buys PASS
 buyer ──buy(Fail)──────────▶ cover (FAIL shares); the price paid is the premium
 swarm ──buy(Pass|Fail)─────▶ price discovery
 verifier ─heartbeat(on_time)▶ market maker reprices itself (Bayes update)
 verifier ─resolve(outcome)─▶ PASS: agent paid (minus 2% take), PASS holders redeem
                              FAIL: buyer refunded, FAIL holders (cover) redeem, bond lost
-anyone ──expire()──────────▶ no verdict by deadline + grace ⇒ FAIL
+verifier is paid its fee on either verdict
+anyone ──expire()──────────▶ no verdict by deadline + grace ⇒ market settles FAIL (cover pays),
+                             verifier's pledge → agent (up to its bond) and buyer; agent record: unverified
 ```
 
 **Market maker.** A Fixed Product Market Maker (the Gnosis/Polymarket FPMM family), so all math is integer multiply and divide (`contract/src/math.rs`, 256-bit intermediates). One collateral unit mints one PASS and one FAIL share; winning shares redeem 1:1, so every job is fully collateralized.
@@ -95,25 +122,30 @@ anyone ──expire()──────────▶ no verdict by deadline + 
 
 **Attested heartbeats.** The verifier posts milestone results (`heartbeat(job_id, on_time, evidence)`). The contract applies a Bayes update with `P(on time | will pass) = 92%` and `P(on time | will fail) = 30%`, and re-centres the pool using only outcome tokens the vault already owns. This is the key design decision, and the simulator found it (see below).
 
-**Rules the contract enforces:** an agent cannot buy FAIL on its own job; the verifier cannot trade; only the verifier resolves or attests; buyers cannot hire themselves; the agent cannot verify itself; the bond must be at least 10% of the payment; LPs can only withdraw capital that is not locked in open jobs; markets close at the deadline; anyone can expire a job after deadline + grace.
+**Rules the contract enforces:** an agent cannot buy FAIL on its own job; the verifier cannot trade; only the verifier resolves or attests; buyers cannot hire themselves; the agent cannot verify itself; the buyer cannot verify its own job; only approved verifiers (Hive reputation 55+, attested by the oracle) can be named; the agent cannot bond until the verifier has accepted; verifier bond pledged to open jobs cannot be withdrawn; the bond must be at least 10% of the payment; LPs can only withdraw capital that is not locked in open jobs; markets close at the deadline; anyone can expire a job after deadline + grace.
 
 ### Contract API (`contract/src/lib.rs`)
 
 | Method | Who | Deposit | Does |
 |---|---|---|---|
-| `new(owner, fee_bps?, liquidity_bps?, min_bond_bps?, take_bps?)` | deployer | – | defaults: 3% trading fee, liquidity = 100% of payment, bond ≥ 10%, take 2% |
+| `new(owner, fee_bps?, liquidity_bps?, min_bond_bps?, take_bps?, hive_oracle?)` | deployer | – | defaults: 3% trading fee, liquidity = 100% of payment, bond ≥ 10%, take 2%, oracle = owner |
+| `list_agent(name, specialties, models, description, endpoint, rate)` | agent | 0.05 NEAR first time | marketplace profile |
+| `apply_verifier(hive_account, description, specialties, fee_bps)` | verifier | bond ≥ 1 NEAR | Pending until attested; fee ≤ 20% |
+| `attest_hive(verifier, hive_account, reputation_x100)` | Hive oracle | – | Approved if ≥ 5500, else Rejected |
+| `withdraw_verifier_bond(amount)` | verifier | – | only unpledged bond |
+| `accept_verification(job_id)` / `decline_verification(job_id)` | named verifier | – | pledge 20% of payment / refund the buyer |
 | `vault_deposit()` | LP | NEAR | mint vault shares |
 | `vault_withdraw(shares)` | LP | – | burn shares for free capital |
-| `post_job(agent, verifier, spec, deadline_ns, grace_ns?)` | buyer | payment | escrow, price from agent record |
+| `post_job(agent, verifier, spec, payment, deadline_ns, grace_ns?)` | buyer | payment + verifier fee | escrow, price from agent record |
 | `accept_job(job_id)` | agent | bond | seed market, bond buys PASS |
 | `buy(job_id, outcome, min_shares?)` | anyone | amount | FPMM buy with slippage guard |
 | `heartbeat(job_id, on_time, evidence)` | verifier | – | Bayes reprice |
-| `resolve(job_id, outcome, evidence)` | verifier | – | settle escrow, vault, record |
-| `expire(job_id)` | anyone | – | FAIL after deadline + grace, or cancel an unaccepted job |
+| `resolve(job_id, outcome, evidence)` | verifier | – | settle escrow, vault, record; pay the verifier fee |
+| `expire(job_id)` | anyone | – | after deadline + grace: verifier never ruled (pledge slashed), or cancel an unaccepted job |
 | `redeem(job_id)` | holder | – | pay winning shares |
-| views | – | – | `get_job`, `list_jobs`, `pass_price_bps`, `quote`, `get_position`, `get_agent`, `agent_prior_bps`, `get_vault`, `get_vault_shares`, `get_config` |
+| views | – | – | `get_job`, `list_jobs`, `pass_price_bps`, `quote`, `get_position`, `get_agent`, `agent_prior_bps`, `get_vault`, `get_vault_shares`, `get_config`, `get_agent_listing`, `list_agent_listings`, `get_verifier`, `list_verifiers`, `job_cost`, `get_verifier_config` |
 
-Every state change logs a NEP-297-style `EVENT_JSON:` line (`job_posted`, `job_accepted`, `trade`, `heartbeat`, `job_resolved`) for indexers.
+Every state change logs a NEP-297-style `EVENT_JSON:` line (`job_posted`, `job_accepted`, `trade`, `heartbeat`, `job_resolved`, `agent_listed`, `verifier_applied`, `hive_attested`, `verification_accepted`, `verification_declined`, `job_unverified`) for indexers.
 
 ## What the simulator taught us
 
@@ -121,13 +153,15 @@ The swarm (`sim/swarm.js`) runs scripted agents on `sim/engine.js`, a BigInt mir
 
 The first version had no heartbeats in the contract: watcher agents read progress signals off-chain and traded on them. The market became accurate, but **the vault lost money on every seed**: −17% over 600 simulated hours at the final fee settings, and −48% with deeper liquidity. Every public progress signal was a free option for whoever traded first against the passive pool, and raising fees did not fix it.
 
-The fix was to make progress an on-chain, attested input that the market maker uses directly. Averaged over seeds 1, 2, 3 and 7 with the same fees, the vault went from **−17.3%** to **+1.0%**, and the Brier score at close improved from 0.071 to 0.045. Traders still profit from information the verifier does not see (the watchers in the sim read commits with 70% accuracy), which is the reason to have a market at all.
+The fix was to make progress an on-chain, attested input that the market maker uses directly. Averaged over seeds 1, 2, 3 and 7 with the same fees, the vault went from **−17.3%** to about **+1%** (+1.05% with the verifier rules added), and the Brier score at close improved from 0.071 to about 0.05. Traders still profit from information the verifier does not see (the watchers in the sim read commits with 70% accuracy), which is the reason to have a market at all.
 
 Reproduce the comparison: `node sim/run.js --ticks 600 --seed <n>` for n in 1 2 3 7.
 
 ## Threat model and limits
 
-- **The verifier is trusted.** It resolves jobs and attests heartbeats. The design target is a TEE (OutLayer or NEAR AI Cloud) running a job's acceptance suite, so the evidence hash carries a hardware attestation; `verifier/verify.js` is the reference logic and runs locally in this build. It `require`s the delivered code, so outside a TEE run it only in a sandbox.
+- **The verifier is still trusted for its verdict.** The contract now makes it independent of the parties (not the agent, not the buyer, cannot trade), pays it the same either way, puts its bond and Hive reputation at stake, and slashes it for silence. It does not yet prove a wrong verdict. Next: a dispute window where a second registered verifier re-runs the suite from the evidence hash and a verifier caught lying loses its bond, plus TEE attestation (OutLayer or NEAR AI Cloud) checked on chain. `verifier/verify.js` `require`s the delivered code, so outside a TEE run it only in a sandbox.
+- **The Hive oracle is one account.** NEAR cannot read Hive, so one oracle account attests reputations. Several oracles with a quorum, or a light client, would remove that trust. Reputation is checked at approval; re-attesting periodically is the next step.
+- **Listing is open.** Any account can list an agent profile for a 0.05 NEAR storage deposit. What an agent says about its models is its own claim; its record is not.
 - **Self-shorting through a second account.** The contract stops an agent buying FAIL on its own job from its own account, not from a sybil. An agent profits from sabotage only if its FAIL position pays more than its lost bond and lost payment; FAIL buys move the price, so this shows up on-chain. A per-job cap on FAIL open interest relative to the bond is the next step.
 - **Heartbeat likelihoods are fixed** (92% / 30%). They should be learned per verifier from resolved jobs.
 - **No sell.** Positions are held to resolution. FPMM sell needs a quadratic solve; not built yet.
@@ -138,17 +172,18 @@ Reproduce the comparison: `node sim/run.js --ticks 600 --seed <n>` for n in 1 2 
 ## Repository
 
 ```
-contract/        NEAR smart contract (Rust, near-sdk 5), 15 unit tests
+contract/        NEAR smart contract (Rust, near-sdk 5), 23 unit tests
   tests/sandbox.rs end-to-end test on a local NEAR node
-  src/lib.rs     jobs, vault, escrow, market, records
+  src/lib.rs     jobs, vault, escrow, market, records, agent marketplace, verifiers
   src/math.rs    FPMM, seeding, Bayes repricing (integer math)
   src/tests.rs   unit tests, shared vectors with sim/test.js
 sim/
   engine.js      BigInt mirror of the contract (Node and browser)
-  swarm.js       scripted swarm + story mode
+  swarm.js       scripted swarm (agents, buyers, underwriters, verifiers) + story mode
+  hive.js        Hive reputation, account lookup, Keychain signature check (secp256k1, no deps)
   run.js         dry-run CLI
   test.js        cross-checks engine.js against the Rust vectors
-verifier/        reference verifier and the slugify example job
+verifier/        reference verifier, the slugify example job, hive-oracle.js
 dashboard/       index.html + build.js → dist/actuary.html (single file)
 scripts/         testnet-demo.sh
 docs/            submission text, demo video script, X post

@@ -21,15 +21,24 @@ fn ctx(who: &str, deposit: u128, now: u64) {
 
 fn setup() -> Actuary {
     ctx("owner.near", 0, 0);
-    let mut c = Actuary::new(acc("owner.near"), None, None, None, None);
+    let mut c = Actuary::new(acc("owner.near"), None, None, None, None, Some(acc("oracle.near")));
     ctx("lp.near", 100 * NEAR, 0);
     c.vault_deposit();
+    // verifier.near: a 50 NEAR bond, a 5% fee, Hive reputation 61.20 attested by the oracle.
+    ctx("verifier.near", 50 * NEAR, 0);
+    c.apply_verifier("vera".into(), "test suites, Rust".into(), vec!["rust".into()], 500);
+    ctx("oracle.near", 0, 0);
+    c.attest_hive(acc("verifier.near"), "vera".into(), 6_120);
     c
 }
 
+/// Buyer posts a job (payment + 5% verifier fee) and the verifier accepts it.
 fn post(c: &mut Actuary, agent: &str, payment: u128) -> u64 {
-    ctx("buyer.near", payment, 0);
-    c.post_job(acc(agent), acc("verifier.near"), "sha256:spec".into(), 24 * HOUR, None)
+    ctx("buyer.near", payment + payment / 20, 0);
+    let id = c.post_job(acc(agent), acc("verifier.near"), "sha256:spec".into(), U128(payment), 24 * HOUR, None);
+    ctx("verifier.near", 0, 0);
+    c.accept_verification(id);
+    id
 }
 
 #[test]
@@ -217,14 +226,110 @@ fn bond_is_required() {
 }
 
 #[test]
-fn silent_agent_expires_as_fail_after_grace() {
+fn silent_verifier_loses_its_pledge_and_the_agent_keeps_a_clean_record() {
     let mut c = setup();
-    let id = post(&mut c, "ghost.near", NEAR);
-    ctx("ghost.near", NEAR / 10, HOUR);
+    let id = post(&mut c, "ghost.near", 10 * NEAR);
+    assert_eq!(c.get_verifier(acc("verifier.near")).unwrap().locked.0, 2 * NEAR);
+    ctx("ghost.near", NEAR, HOUR);
     c.accept_job(id);
     ctx("anyone.near", 0, 25 * HOUR + 1);
     c.expire(id);
-    assert_eq!(c.get_job(id).unwrap().status, JobStatus::Failed);
+    let job = c.get_job(id).unwrap();
+    assert_eq!(job.status, JobStatus::Failed);
+    assert!(job.verifier_timed_out);
+    let v = c.get_verifier(acc("verifier.near")).unwrap();
+    assert_eq!((v.bond.0, v.locked.0, v.slashed.0, v.timeouts, v.earned.0), (48 * NEAR, 0, 2 * NEAR, 1, 0));
+    let rec = c.get_agent(acc("ghost.near"));
+    assert_eq!((rec.jobs, rec.fails, rec.unverified), (0, 0, 1));
+}
+
+#[test]
+fn verifier_is_paid_its_fee_on_either_verdict() {
+    let mut c = setup();
+    for (agent, outcome) in [("nova.near", Outcome::Pass), ("shady.near", Outcome::Fail)] {
+        let id = post(&mut c, agent, 10 * NEAR);
+        assert_eq!(c.get_job(id).unwrap().verifier_fee.0, NEAR / 2);
+        ctx(agent, NEAR, HOUR);
+        c.accept_job(id);
+        ctx("verifier.near", 0, 2 * HOUR);
+        c.resolve(id, outcome, "sha256:tests".into());
+    }
+    let v = c.get_verifier(acc("verifier.near")).unwrap();
+    assert_eq!((v.passes, v.fails, v.earned.0, v.locked.0, v.accepted), (1, 1, NEAR, 0, 2));
+}
+
+#[test]
+#[should_panic(expected = "buyer cannot verify its own job")]
+fn buyer_cannot_be_the_verifier() {
+    let mut c = setup();
+    ctx("verifier.near", NEAR, 0);
+    c.post_job(acc("nova.near"), acc("verifier.near"), "spec".into(), U128(NEAR), 24 * HOUR, None);
+}
+
+#[test]
+#[should_panic(expected = "agent cannot verify its own work")]
+fn agent_cannot_be_the_verifier() {
+    let mut c = setup();
+    ctx("buyer.near", NEAR + NEAR / 20, 0);
+    c.post_job(acc("verifier.near"), acc("verifier.near"), "spec".into(), U128(NEAR), 24 * HOUR, None);
+}
+
+#[test]
+#[should_panic(expected = "verifier is not approved")]
+fn low_hive_reputation_is_rejected() {
+    let mut c = setup();
+    ctx("lowrep.near", NEAR, 0);
+    c.apply_verifier("newbie".into(), "".into(), vec![], 300);
+    ctx("oracle.near", 0, 0);
+    assert_eq!(c.attest_hive(acc("lowrep.near"), "newbie".into(), 4_800), VerifierStatus::Rejected);
+    ctx("buyer.near", NEAR + NEAR * 3 / 100, 0);
+    c.post_job(acc("nova.near"), acc("lowrep.near"), "spec".into(), U128(NEAR), 24 * HOUR, None);
+}
+
+#[test]
+#[should_panic(expected = "only the Hive oracle can attest")]
+fn only_the_oracle_attests_hive() {
+    let mut c = setup();
+    ctx("lowrep.near", NEAR, 0);
+    c.apply_verifier("newbie".into(), "".into(), vec![], 300);
+    c.attest_hive(acc("lowrep.near"), "newbie".into(), 9_000);
+}
+
+#[test]
+#[should_panic(expected = "the verifier has not accepted this job yet")]
+fn agent_waits_for_the_verifier() {
+    let mut c = setup();
+    ctx("buyer.near", NEAR + NEAR / 20, 0);
+    let id = c.post_job(acc("nova.near"), acc("verifier.near"), "spec".into(), U128(NEAR), 24 * HOUR, None);
+    ctx("nova.near", NEAR / 10, HOUR);
+    c.accept_job(id);
+}
+
+#[test]
+fn verifier_declines_and_buyer_is_refunded() {
+    let mut c = setup();
+    ctx("buyer.near", NEAR + NEAR / 20, 0);
+    let id = c.post_job(acc("nova.near"), acc("verifier.near"), "spec".into(), U128(NEAR), 24 * HOUR, None);
+    ctx("verifier.near", 0, 0);
+    c.decline_verification(id);
+    assert_eq!(c.get_job(id).unwrap().status, JobStatus::Cancelled);
+    assert_eq!(c.get_verifier(acc("verifier.near")).unwrap().declined, 1);
+}
+
+#[test]
+fn agents_list_profiles_with_their_record() {
+    let mut c = setup();
+    ctx("nova.near", LISTING_DEPOSIT, 0);
+    c.list_agent("Nova".into(), vec!["rust".into(), "near contracts".into()], vec!["claude-opus-5-5".into()], "Writes and tests NEAR contracts.".into(), "https://nova.example/jobs".into(), U128(5 * NEAR));
+    let id = post(&mut c, "nova.near", NEAR);
+    ctx("nova.near", NEAR / 10, HOUR);
+    c.accept_job(id);
+    ctx("verifier.near", 0, 2 * HOUR);
+    c.resolve(id, Outcome::Pass, "ok".into());
+    let l = c.list_agent_listings(None, None);
+    assert_eq!(l.len(), 1);
+    assert_eq!(l[0].profile.models, vec!["claude-opus-5-5".to_string()]);
+    assert_eq!((l[0].record.passes, l[0].prior_bps), (1, 6_666));
 }
 
 #[test]

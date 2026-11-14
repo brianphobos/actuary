@@ -1,7 +1,7 @@
 // Builds dist/actuary.html: the dashboard with engine.js and swarm.js inlined, so it is a single file.
 const fs = require('node:fs'), path = require('node:path');
 let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-for (const f of ['engine.js', 'swarm.js']) {
+for (const f of ['engine.js', 'swarm.js', 'hive.js']) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'sim', f), 'utf8');
   html = html.replace(`<script src="../sim/${f}"></script>`, () => `<script>\n${src}\n</script>`);
 }

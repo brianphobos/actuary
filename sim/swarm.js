@@ -29,14 +29,22 @@
   const HB_PASS = 0.92, HB_FAIL = 0.3;
 
   const WORKERS = [
-    { id: 'atlas.agent', skill: 0.95, bondFrac: 0.12, joins: 0, kind: 'veteran' },
-    { id: 'orion.agent', skill: 0.9, bondFrac: 0.12, joins: 0, kind: 'veteran' },
-    { id: 'quill.agent', skill: 0.82, bondFrac: 0.15, joins: 0, kind: 'steady' },
-    { id: 'flux.agent', skill: 0.62, bondFrac: 0.12, joins: 0, kind: 'flaky' },
-    { id: 'sleeper.agent', skill: 0.97, bondFrac: 0.12, joins: 0, kind: 'sleeper', turnsAfter: 10 },
-    { id: 'ghost.agent', skill: 0.2, bondFrac: 0.1, joins: 0, kind: 'fraud' },
-    { id: 'nova.agent', skill: 0.93, bondFrac: 0.4, joins: 120, kind: 'rookie' },
-    { id: 'mint.agent', skill: 0.88, bondFrac: 0.35, joins: 200, kind: 'rookie' },
+    { id: 'atlas.agent', skill: 0.95, bondFrac: 0.12, joins: 0, kind: 'veteran', name: 'Atlas', specialties: ['rust', 'near contracts', 'audits'], models: ['claude-opus-5-5'], rate: 12, description: 'Writes and audits NEAR smart contracts. Every delivery ships with tests.' },
+    { id: 'orion.agent', skill: 0.9, bondFrac: 0.12, joins: 0, kind: 'veteran', name: 'Orion', specialties: ['data pipelines', 'python', 'sql'], models: ['gpt-5', 'claude-sonnet-5-5'], rate: 9, description: 'ETL jobs, migrations and reporting. Two models cross-check each other.' },
+    { id: 'quill.agent', skill: 0.82, bondFrac: 0.15, joins: 0, kind: 'steady', name: 'Quill', specialties: ['docs', 'technical writing', 'translation'], models: ['claude-haiku-5-5'], rate: 4, description: 'Docs, READMEs and translations, fast and cheap.' },
+    { id: 'flux.agent', skill: 0.62, bondFrac: 0.12, joins: 0, kind: 'flaky', name: 'Flux', specialties: ['frontend', 'react', 'css'], models: ['llama-4-maverick (self-hosted)'], rate: 3, description: 'UI work on our own GPUs. Cheapest frontend on the market.' },
+    { id: 'sleeper.agent', skill: 0.97, bondFrac: 0.12, joins: 0, kind: 'sleeper', turnsAfter: 10, name: 'Sleeper', specialties: ['databases', 'migrations', 'devops'], models: ['claude-opus-5-5', 'gpt-5'], rate: 15, description: 'Zero-downtime database migrations. Twelve for twelve.' },
+    { id: 'ghost.agent', skill: 0.2, bondFrac: 0.1, joins: 0, kind: 'fraud', name: 'Ghost', specialties: ['anything', 'urgent jobs'], models: ['undisclosed'], rate: 2, description: 'Any job, any deadline, lowest price.' },
+    { id: 'nova.agent', skill: 0.93, bondFrac: 0.4, joins: 120, kind: 'rookie', name: 'Nova', specialties: ['javascript', 'string utils', 'testing'], models: ['claude-opus-5-5'], rate: 10, description: 'New here. I bond 40% of every job so you can insure me cheaply.' },
+    { id: 'mint.agent', skill: 0.88, bondFrac: 0.35, joins: 200, kind: 'rookie', name: 'Mint', specialties: ['solidity', 'rust', 'bridges'], models: ['deepseek-v4 (self-hosted)', 'qwen-3-coder'], rate: 8, description: 'Cross-chain work on open-weight models, run on our own cluster.' },
+  ];
+  // Verifiers apply with a NEAR bond and a Hive account; the Hive oracle approves reputation >= 55.
+  // `lazy` is how often the verifier never rules (it then loses its pledge).
+  const VERIFIERS = [
+    { id: 'vera.verify', hive: 'vera', rep: 6430, feeBps: 400, bond: 60, lazy: 0, description: 'Runs acceptance suites in an OutLayer TEE. Rust, JS, Python.', specialties: ['rust', 'javascript', 'python'] },
+    { id: 'kestrel.verify', hive: 'kestrel', rep: 5810, feeBps: 300, bond: 40, lazy: 0, description: 'Data and SQL verification, results reproducible from the evidence hash.', specialties: ['sql', 'data pipelines'] },
+    { id: 'drift.verify', hive: 'drift', rep: 5560, feeBps: 150, bond: 30, lazy: 0.25, description: 'Cheapest verifier on the market. Fast turnaround.', specialties: ['frontend', 'docs'] },
+    { id: 'newbie.verify', hive: 'newbie', rep: 4120, feeBps: 100, bond: 5, lazy: 0, description: 'Just joined Hive. Keen to verify anything.', specialties: ['anything'] },
   ];
   const BUYERS = ['acme.buyer', 'globex.buyer', 'initech.buyer', 'umbrella.buyer', 'hooli.buyer', 'stark.buyer'];
   const TRADERS = [
@@ -67,13 +75,15 @@
   function createSwarm({ seed = 7, feeBps = 300, takeBps = 200, liquidityBps = 10000, vault = 3000 } = {}) {
     const R = rng(seed);
     const m = new Actuary({ feeBps, takeBps, liquidityBps });
+    for (const w of WORKERS) m.listAgent(w.id, { name: w.name, specialties: w.specialties, models: w.models, description: w.description, endpoint: `https://${w.id.split('.')[0]}.example/jobs`, rate: n(w.rate) });
+    for (const v of VERIFIERS) { m.applyVerifier(v.id, { hiveAccount: v.hive, description: v.description, specialties: v.specialties, feeBps: v.feeBps }, n(v.bond)); m.attestHive(m.hiveOracle, v.id, v.hive, v.rep); }
     m.vaultDeposit('lp-alpha.near', n(vault * 0.6));
     m.vaultDeposit('lp-beta.near', n(vault * 0.4));
     const vaultStart = vault;
     const live = new Map(); // jobId -> hidden info
     const workerState = new Map(WORKERS.map((w) => [w.id, { ...w, busy: 0, hiredAt: null }]));
     const stats = { ticks: 0, consequentialLoss: 0, coverPaid: 0, premiums: 0, uninsuredLoss: 0, insuredLossAfterCover: 0,
-      rejections: [], closes: [], vaultCurve: [], rookieHires: {}, sleeperTurned: null, posted: 0, cancelled: 0 };
+      rejections: [], closes: [], vaultCurve: [], rookieHires: {}, sleeperTurned: null, posted: 0, cancelled: 0, timeouts: 0 };
     let tick = 0;
 
     function pickAgent() {
@@ -92,7 +102,14 @@
       const pay = Math.round((2 + R() * 18) * 10) / 10;
       const dur = 8 + Math.floor(R() * 32);
       m.now = BigInt(tick) * HOUR;
-      const id = m.postJob(buyer, { agent: w.id, verifier: VERIFIER, spec: `sha256:spec-${tick}`, deadline: m.now + BigInt(dur) * HOUR, grace: 2n * HOUR }, n(pay));
+      // Buyers pick an approved verifier: cheaper fees attract them, missed rulings drive them away.
+      const vs = VERIFIERS.filter((v) => m.getVerifier(v.id).status === 'Approved' && m.getVerifier(v.id).bond - m.getVerifier(v.id).locked >= n(pay * 0.2));
+      if (!vs.length) return;
+      const vw = vs.map((v) => { const r = m.getVerifier(v.id); return (1 / (1 + v.feeBps / 200)) * Math.pow(0.5, r.timeouts); });
+      let pick = R() * vw.reduce((a, b) => a + b, 0), vf = vs[vs.length - 1];
+      for (let i = 0; i < vs.length; i++) { pick -= vw[i]; if (pick <= 0) { vf = vs[i]; break; } }
+      const id = m.postJob(buyer, { agent: w.id, verifier: vf.id, spec: `sha256:spec-${tick}`, deadline: m.now + BigInt(dur) * HOUR, grace: 2n * HOUR }, n(pay));
+      m.acceptVerification(vf.id, id);
       stats.posted++;
       const rec = m.getAgent(w.id);
       let skill = w.skill;
@@ -117,7 +134,7 @@
         try { m.buy(w.id, id, 'Fail', n(5)); } catch (e) { stats.rejections.push({ job: id, who: w.id, msg: e.message }); }
       }
       const hbAt = [0.25, 0.5, 0.75].map((x) => tick + Math.max(1, Math.round(dur * x)));
-      live.set(id, { id, worker: w.id, willPass, end: tick + dur, hbAt, hbSeen: [], loss, premium, cover, buyer, silent: !willPass && R() < 0.5 });
+      live.set(id, { id, worker: w.id, verifier: vf.id, willPass, end: tick + dur, hbAt, hbSeen: [], loss, premium, cover, buyer, lazy: R() < vf.lazy });
       // Actuaries price the open from the agent's public record.
       for (const t of TRADERS.filter((t) => t.kind === 'actuary')) {
         const r = m.getAgent(w.id);
@@ -140,7 +157,7 @@
           const hit = R() < (L.willPass ? HB_PASS : HB_FAIL);
           L.hbSeen.push(hit);
           // The verifier attests the heartbeat; the market maker reprices itself.
-          if (job.status === 'Active' && m.now < job.deadline) m.heartbeat(VERIFIER, L.id, hit, hit ? 'sha256:progress' : 'missed');
+          if (job.status === 'Active' && m.now < job.deadline) m.heartbeat(L.verifier, L.id, hit, hit ? 'sha256:progress' : 'missed');
           // Watchers have their own, noisier read of the work (they look at the commits),
           // and trade only when it disagrees with the price.
           for (const t of TRADERS.filter((t) => t.kind === 'watcher')) {
@@ -158,8 +175,10 @@
           if (R() < 0.04 && job.status === 'Active' && m.now < job.deadline) m.buy(t.id, L.id, R() < 0.5 ? 'Pass' : 'Fail', n(0.1 + R() * 0.4), 0n, 'noise');
         }
         // resolution
-        if (tick === L.end && !(L.silent)) m.resolve(VERIFIER, L.id, L.willPass ? 'Pass' : 'Fail', L.willPass ? 'tests 24/24 passed' : 'tests 9/24 passed');
-        if (L.silent && m.now >= job.deadline + job.grace && job.status === 'Active') m.expire(L.id);
+        // The verifier rules at the deadline, unless it is lazy this time: then anyone expires the job
+        // after the grace period and the verifier's pledge pays the agent and the buyer.
+        if (tick === L.end && !L.lazy) m.resolve(L.verifier, L.id, L.willPass ? 'Pass' : 'Fail', L.willPass ? 'tests 24/24 passed' : 'tests 9/24 passed');
+        if (L.lazy && m.now >= job.deadline + job.grace && job.status === 'Active') { m.expire(L.id); stats.timeouts++; }
         if (job.status === 'Passed' || job.status === 'Failed') finish(L, job);
       }
       stats.vaultCurve.push({ t: tick, assets: f(m.getVault().totalAssets) });
@@ -169,6 +188,11 @@
       live.delete(L.id);
       workerState.get(L.worker).busy--;
       const passed = job.status === 'Passed';
+      if (job.verifierTimedOut) { // not a market close we score; settle shares and stop
+        for (const [key] of [...m.positions.entries()]) if (key.startsWith(L.id + ':')) { const who = key.slice(String(L.id).length + 1); try { m.redeem(who, L.id); } catch (e) { m.positions.delete(key); } }
+        if (L.cover > 0n) stats.coverPaid += f(L.cover);
+        stats.premiums += L.premium; return;
+      }
       stats.closes.push({ job: L.id, agent: L.worker, prior: job.priorBps / 10000, open: (job.history[1] || job.history[0]).p / 10000,
         close: job.closingBps / 10000, passed, premium: L.premium, cover: f(L.cover), loss: L.loss, heartbeats: L.hbSeen });
       if (!passed) {
@@ -195,6 +219,7 @@
       const v = m.getVault();
       const agents = WORKERS.map((w) => { const r = m.getAgent(w.id); return { id: w.id, kind: w.kind, jobs: r.jobs, passes: r.passes, fails: r.fails, prior: m.agentPriorBps(w.id) / 10000, earned: f(r.earned), slashed: f(r.slashed), brier: r.jobs ? r.brierBpsSum / r.jobs / 10000 : null, hiredAt: workerState.get(w.id).hiredAt, joins: w.joins }; });
       const traders = TRADERS.map((t) => ({ id: t.id, kind: t.kind, pnl: f(m.wallets.get(t.id) || 0n) }));
+      const verifiers = VERIFIERS.map((x) => { const v = m.getVerifier(x.id); return { id: x.id, hive: x.hive, rep: v.hiveReputation / 100, status: v.status, feeBps: v.feeBps, rulings: v.passes + v.fails, passes: v.passes, fails: v.fails, timeouts: v.timeouts, earned: f(v.earned), slashed: f(v.slashed), bond: f(v.bond) }; });
       return {
         ticks: tick, jobsPosted: stats.posted, jobsResolved: stats.closes.length, jobsCancelled: stats.cancelled,
         passRate: stats.closes.filter((c) => c.passed).length / Math.max(1, stats.closes.length),
@@ -202,11 +227,11 @@
         vault: { start: vaultStart, assets: f(v.totalAssets), pnl: f(v.realizedPnl), fees: f(v.feesEarned), returnPct: (f(v.totalAssets) / vaultStart - 1) * 100 },
         buyers: { consequentialLoss: stats.consequentialLoss, coverPaid: stats.coverPaid, premiums: stats.premiums, uninsuredLoss: stats.uninsuredLoss, insuredLossAfterCover: stats.insuredLossAfterCover },
         sleeper: { turnedOnJob: stats.sleeperTurned, closes: stats.closes.filter((c) => c.agent === 'sleeper.agent' && !c.passed).map((c) => ({ job: c.job, prior: c.prior, close: c.close })) },
-        rookies: stats.rookieHires, rejections: stats.rejections.slice(0, 10), agents, traders,
+        rookies: stats.rookieHires, rejections: stats.rejections.slice(0, 10), agents, traders, verifiers, timeouts: stats.timeouts,
       };
     }
 
-    return { market: m, step, report, stats, live, get tick() { return tick; }, WORKERS, TRADERS, BUYERS };
+    return { market: m, step, report, stats, live, get tick() { return tick; }, WORKERS, TRADERS, BUYERS, VERIFIERS };
   }
 
   // ------------------------------------------------------------------
@@ -220,13 +245,17 @@
     const steps = [
       { title: 'Underwriters fund the vault', run() {
         m.vaultDeposit('lp-alpha.near', n(300)); m.vaultDeposit('lp-beta.near', n(200));
-        return 'Two liquidity providers deposit 500 NEAR into the underwriting vault. Every new job market is seeded from it, and it earns the trading fees.'; } },
+        m.applyVerifier(VERIFIER, { hiveAccount: 'tee-verify', description: 'Runs acceptance suites inside a TEE.', specialties: ['javascript', 'databases'], feeBps: 300 }, n(20));
+        m.attestHive(m.hiveOracle, VERIFIER, 'tee-verify', 6720);
+        for (const w of WORKERS) m.listAgent(w.id, { name: w.name, specialties: w.specialties, models: w.models, description: w.description, rate: n(w.rate) });
+        return 'Two liquidity providers deposit 500 NEAR into the underwriting vault. Every new job market is seeded from it, and it earns the trading fees. verifier.tee bonds 20 NEAR and signs in with Hive Keychain; the Hive oracle confirms a reputation of 67.2 (55 is the minimum) and approves it at a 3% fee. Agents list what they do and which AI models run them.'; } },
       { title: 'A track record, written on-chain', run() {
-        for (let i = 0; i < 12; i++) { at(i); const id = m.postJob('history.buyer', { agent: 'sleeper.agent', verifier: VERIFIER, spec: 'past', deadline: m.now + HOUR }, n(1)); m.acceptJob('sleeper.agent', id, n(0.1)); m.resolve(VERIFIER, id, 'Pass', 'tests passed'); }
+        for (let i = 0; i < 12; i++) { at(i); const id = m.postJob('history.buyer', { agent: 'sleeper.agent', verifier: VERIFIER, spec: 'past', deadline: m.now + HOUR }, n(1)); m.acceptVerification(VERIFIER, id); m.acceptJob('sleeper.agent', id, n(0.1)); m.resolve(VERIFIER, id, 'Pass', 'tests passed'); }
         return `sleeper.agent has delivered 12 jobs in a row. Its record lives in the contract, so its next market opens at ${(m.agentPriorBps('sleeper.agent') / 100).toFixed(1)}%. nova.agent is brand new: it opens at ${(m.agentPriorBps('nova.agent') / 100).toFixed(1)}%.`; } },
       { title: 'A rookie gets a real job', run() {
         at(20); ctx.nova = m.postJob('acme.buyer', { agent: 'nova.agent', verifier: VERIFIER, spec: 'sha256:slugify-spec+24-tests', deadline: m.now + 24n * HOUR }, n(10));
-        return `acme.buyer hires nova.agent to write a function that must pass a 24-test suite, and escrows 10 NEAR. With no history, nova's market would open at ${pct(ctx.nova)}. On most agent marketplaces, nova would never win this job.`; } },
+        m.acceptVerification(VERIFIER, ctx.nova);
+        return `acme.buyer finds nova.agent in the marketplace (JavaScript, runs on claude-opus-5-5) and hires it to write a function that must pass a 24-test suite. It escrows 10 NEAR plus verifier.tee's 0.30 NEAR fee, and verifier.tee accepts the job, pledging 2 NEAR of its bond. With no history, nova's market would open at ${pct(ctx.nova)}. On most agent marketplaces, nova would never win this job.`; } },
       { title: 'Skin in the game', run() {
         at(21); const q = m.acceptJob('nova.agent', ctx.nova, n(4));
         return `nova accepts by staking a 4 NEAR bond on PASS. The vault seeds the market and the bond moves the price to ${(q.passPriceAfterBps / 100).toFixed(1)}%. If nova fails, the bond goes to whoever insured against it.`; } },
@@ -245,10 +274,10 @@
         const bondBack = m.redeem('nova.agent', ctx.nova);
         for (const who of ['actuary-1.swarm', 'actuary-2.swarm']) { try { m.redeem(who, ctx.nova); } catch (e) { /* no PASS shares */ } }
         const r = m.getAgent('nova.agent');
-        return `The verifier runs the 24 tests on the delivered code inside a TEE and all of them pass. nova is paid 9.80 NEAR from escrow (2% goes to the vault) and its 4 NEAR bond comes back as ${f(bondBack).toFixed(2)} NEAR. Its record is now ${r.passes} pass / ${r.fails} fail. acme paid a small premium and got its work.`; } },
+        return `The verifier runs the 24 tests on the delivered code inside a TEE and all of them pass. The verifier is paid its 0.30 NEAR fee (it would be paid the same for a FAIL). nova is paid 9.80 NEAR from escrow (2% goes to the vault) and its 4 NEAR bond comes back as ${f(bondBack).toFixed(2)} NEAR. Its record is now ${r.passes} pass / ${r.fails} fail. acme paid a small premium and got its work.`; } },
       { title: 'The trusted agent takes a big job', run() {
         at(50); ctx.sleeper = m.postJob('globex.buyer', { agent: 'sleeper.agent', verifier: VERIFIER, spec: 'sha256:migration-spec', deadline: m.now + 24n * HOUR, grace: 2n * HOUR }, n(20));
-        m.acceptJob('sleeper.agent', ctx.sleeper, n(2));
+        m.acceptVerification(VERIFIER, ctx.sleeper); m.acceptJob('sleeper.agent', ctx.sleeper, n(2));
         const cost = m.costFor(ctx.sleeper, 'Fail', n(15)); m.buy('globex.buyer', ctx.sleeper, 'Fail', cost, 0n, 'cover'); ctx.globexCover = m.getPosition(ctx.sleeper, 'globex.buyer').fail;
         return `globex.buyer hires sleeper.agent for a 20 NEAR database migration. Its record makes cover cheap: 15 NEAR of protection costs globex ${f(cost).toFixed(2)} NEAR. PASS opens at ${pct(ctx.sleeper)}.`; } },
       { title: 'The agent tries to bet against itself', run() {
@@ -258,16 +287,16 @@
         const ps = [];
         for (const h of [56, 62, 68]) { at(h); ps.push((m.heartbeat(VERIFIER, ctx.sleeper, false, 'missed') / 100).toFixed(1) + '%'); }
         return `Three milestones are missed. The verifier attests each miss and the price falls on its own: ${ps.join(' → ')}, long before the deadline. Twelve straight passes did not hide the risk, because the market watches the work, not the résumé.`; } },
-      { title: 'Deadline passes. Anyone can close it.', run() {
-        at(77); m.expire(ctx.sleeper);
+      { title: 'Deadline passes. The verifier rules FAIL.', run() {
+        at(74); m.resolve(VERIFIER, ctx.sleeper, 'Fail', 'no delivery by the deadline');
         const paid = m.redeem('globex.buyer', ctx.sleeper);
-        return `No delivery after the grace period, so anyone can call expire() and the job resolves FAIL. globex gets its 20 NEAR back from escrow and its cover pays ${f(paid).toFixed(2)} NEAR for the damage. sleeper.agent's 2 NEAR bond is gone. Escrow gets your money back. Actuary makes you whole.`; } },
+        return `Nothing is delivered by the deadline, so the verifier rules FAIL and collects its fee. (Had it gone silent instead, anyone could expire the job and its 4 NEAR pledge would go to the agent and buyer.) globex gets its 20 NEAR back from escrow and its cover pays ${f(paid).toFixed(2)} NEAR for the damage. sleeper.agent's 2 NEAR bond is gone. Escrow gets your money back. Actuary makes you whole.`; } },
       { title: 'Reputation updates itself', run() {
         const r = m.getAgent('sleeper.agent'); const v = m.getVault();
-        return `sleeper.agent's record is now ${r.passes} / ${r.fails} and its next market opens at ${(m.agentPriorBps('sleeper.agent') / 100).toFixed(1)}%. nova's next one opens at ${(m.agentPriorBps('nova.agent') / 100).toFixed(1)}%. The vault paid its share of globex's claim and holds ${f(v.totalAssets).toFixed(2)} NEAR of its 500 (in the 320-job swarm run it ends up ahead). Insurance, a bond and a credit score, all from one market.`; } },
+        return `sleeper.agent's record is now ${r.passes} / ${r.fails} and its next market opens at ${(m.agentPriorBps('sleeper.agent') / 100).toFixed(1)}%. nova's next one opens at ${(m.agentPriorBps('nova.agent') / 100).toFixed(1)}%. The vault paid its share of globex's claim and holds ${f(v.totalAssets).toFixed(2)} NEAR of its 500 (averaged over four 600-hour swarm runs it ends up about 1% ahead). Insurance, a bond and a credit score, all from one market.`; } },
     ];
     return { m, ctx, steps, f };
   }
 
-  return { createSwarm, createStory, tradeToward, rng, n, f, WORKERS, TRADERS, BUYERS, VERIFIER };
+  return { createSwarm, createStory, tradeToward, rng, n, f, WORKERS, TRADERS, BUYERS, VERIFIER, VERIFIERS };
 });

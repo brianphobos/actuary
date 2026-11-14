@@ -18,16 +18,31 @@ async fn story_on_a_real_node() -> anyhow::Result<()> {
         async move { root.create_subaccount(name).initial_balance(NearToken::from_near(50)).transact().await.map(|r| r.into_result().unwrap()) }
     };
     let (lp, buyer, nova, verifier, globex, sleeper) = (mk("lp").await?, mk("acme").await?, mk("nova").await?, mk("verifier").await?, mk("globex").await?, mk("sleeper").await?);
+    let oracle = mk("hive-oracle").await?;
 
-    contract.call("new").args_json(json!({"owner": root.id()})).transact().await?.into_result()?;
+    contract.call("new").args_json(json!({"owner": root.id(), "hive_oracle": oracle.id()})).transact().await?.into_result()?;
+    // nova lists itself in the agent marketplace.
+    nova.call(contract.id(), "list_agent")
+        .args_json(json!({"name": "Nova", "specialties": ["javascript", "string utils"], "models": ["claude-opus-5-5"], "description": "Small JS utilities with tests.", "endpoint": "https://nova.example/jobs", "rate": NearToken::from_near(10).as_yoctonear().to_string()}))
+        .deposit(NearToken::from_millinear(50)).transact().await?.into_result()?;
+    // The verifier applies with a 10 NEAR bond and a 5% fee; the Hive oracle attests reputation 61.20.
+    verifier.call(contract.id(), "apply_verifier")
+        .args_json(json!({"hive_account": "vera", "description": "Runs JS test suites in a TEE.", "specialties": ["javascript"], "fee_bps": 500}))
+        .deposit(NearToken::from_near(10)).transact().await?.into_result()?;
+    let early = buyer.call(contract.id(), "post_job")
+        .args_json(json!({"agent": nova.id(), "verifier": verifier.id(), "spec": "x", "payment": "1000000000000000000000000", "deadline_ns": u64::MAX / 2}))
+        .deposit(NearToken::from_millinear(1050)).transact().await?;
+    assert!(format!("{:?}", early.into_result().unwrap_err()).contains("verifier is not approved"));
+    oracle.call(contract.id(), "attest_hive").args_json(json!({"verifier": verifier.id(), "hive_account": "vera", "reputation_x100": 6120})).transact().await?.into_result()?;
     lp.call(contract.id(), "vault_deposit").deposit(NearToken::from_near(30)).transact().await?.into_result()?;
 
     // Job 0: rookie nova, bonded, insured, heartbeats, verified PASS.
     let deadline = u64::MAX / 2;
     let id: u64 = buyer.call(contract.id(), "post_job")
-        .args_json(json!({"agent": nova.id(), "verifier": verifier.id(), "spec": "sha256:slugify", "deadline_ns": deadline}))
-        .deposit(NearToken::from_near(10)).transact().await?.json()?;
+        .args_json(json!({"agent": nova.id(), "verifier": verifier.id(), "spec": "sha256:slugify", "payment": NearToken::from_near(10).as_yoctonear().to_string(), "deadline_ns": deadline}))
+        .deposit(NearToken::from_millinear(10_500)).transact().await?.json()?;
     assert_eq!(id, 0);
+    verifier.call(contract.id(), "accept_verification").args_json(json!({"job_id": 0})).transact().await?.into_result()?;
     let p: u32 = contract.view("pass_price_bps").args_json(json!({"job_id": 0})).await?.json()?;
     assert_eq!(p, 5000);
     nova.call(contract.id(), "accept_job").args_json(json!({"job_id": 0})).deposit(NearToken::from_near(4)).transact().await?.into_result()?;
@@ -44,8 +59,9 @@ async fn story_on_a_real_node() -> anyhow::Result<()> {
 
     // Job 1: sleeper tries to short itself (refused), misses heartbeats, verified FAIL.
     globex.call(contract.id(), "post_job")
-        .args_json(json!({"agent": sleeper.id(), "verifier": verifier.id(), "spec": "sha256:migration", "deadline_ns": deadline}))
-        .deposit(NearToken::from_near(10)).transact().await?.into_result()?;
+        .args_json(json!({"agent": sleeper.id(), "verifier": verifier.id(), "spec": "sha256:migration", "payment": NearToken::from_near(10).as_yoctonear().to_string(), "deadline_ns": deadline}))
+        .deposit(NearToken::from_millinear(10_500)).transact().await?.into_result()?;
+    verifier.call(contract.id(), "accept_verification").args_json(json!({"job_id": 1})).transact().await?.into_result()?;
     sleeper.call(contract.id(), "accept_job").args_json(json!({"job_id": 1})).deposit(NearToken::from_near(1)).transact().await?.into_result()?;
     globex.call(contract.id(), "buy").args_json(json!({"job_id": 1, "outcome": "Fail"})).deposit(NearToken::from_near(2)).transact().await?.into_result()?;
     let refused = sleeper.call(contract.id(), "buy").args_json(json!({"job_id": 1, "outcome": "Fail"})).deposit(NearToken::from_near(1)).transact().await?;
@@ -64,6 +80,11 @@ async fn story_on_a_real_node() -> anyhow::Result<()> {
 
     let rec: serde_json::Value = contract.view("get_agent").args_json(json!({"agent": sleeper.id()})).await?.json()?;
     assert_eq!(rec["fails"], 1);
+    let v: serde_json::Value = contract.view("get_verifier").args_json(json!({"verifier": verifier.id()})).await?.json()?;
+    assert_eq!((v["passes"].as_u64(), v["fails"].as_u64(), v["earned"].as_str(), v["locked"].as_str()), (Some(1), Some(1), Some("1000000000000000000000000"), Some("0")), "verifier paid 0.5 NEAR per ruling, pledges released");
+    let l: serde_json::Value = contract.view("list_agent_listings").args_json(json!({})).await?.json()?;
+    assert_eq!(l[0]["record"]["passes"], 1);
+    println!("marketplace: {}", l[0]);
     let vault: serde_json::Value = contract.view("get_vault").args_json(json!({})).await?.json()?;
     println!("vault after two jobs: {vault}");
     println!("cover paid to globex: {cover}");

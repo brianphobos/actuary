@@ -49,6 +49,8 @@ console.log(`\n${c.b}Underwriting vault${c.x}`);
 console.log(`  ${r.vault.start} NEAR -> ${nr(r.vault.assets)} NEAR (${r.vault.returnPct >= 0 ? c.g : c.r}${r.vault.returnPct.toFixed(2)}%${c.x}), of which fees ${nr(r.vault.fees)} NEAR`);
 console.log(`\n${c.b}Agents${c.x}  ${c.d}(record, next opening price, earned, bond slashed)${c.x}`);
 for (const a of r.agents) console.log(`  ${a.id.padEnd(15)} ${a.kind.padEnd(8)} ${String(a.passes).padStart(3)} / ${String(a.fails).padEnd(3)} next ${pct(a.prior).padStart(6)}  earned ${nr(a.earned).padStart(7)}  slashed ${nr(a.slashed).padStart(6)}${a.kind === 'rookie' ? `  first hired at hour ${a.hiredAt} (joined ${a.joins})` : ''}`);
+console.log(`\n${c.b}Verifiers${c.x}  ${c.d}(Hive reputation, status, fee, rulings, missed, fees earned, pledge lost)${c.x}`);
+for (const v of r.verifiers) console.log(`  ${v.id.padEnd(15)} @${v.hive.padEnd(9)} rep ${v.rep.toFixed(1).padStart(5)}  ${(v.status === 'Approved' ? c.g : c.r) + v.status.padEnd(9) + c.x} fee ${(v.feeBps / 100).toFixed(1).padStart(4)}%  ${String(v.rulings).padStart(4)} rulings  ${String(v.timeouts).padStart(2)} missed  earned ${nr(v.earned).padStart(6)}  lost ${nr(v.slashed).padStart(6)}`);
 console.log(`\n${c.b}Underwriter swarm P&L${c.x}`);
 for (const t of r.traders) console.log(`  ${t.id.padEnd(18)} ${t.kind.padEnd(8)} ${t.pnl >= 0 ? c.g : c.r}${nr(t.pnl).padStart(8)} NEAR${c.x}`);
 if (r.sleeper.turnedOnJob !== null) {
